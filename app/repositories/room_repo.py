@@ -1,0 +1,163 @@
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func, and_, or_
+from sqlalchemy.orm import selectinload
+from typing import Optional, List, Dict, Any
+from ..models.room import Room, RoomStatus, HousekeepingStatus
+
+class RoomRepository:
+    def __init__(self, session: AsyncSession):
+        self.session = session
+    
+    async def list(
+        self, 
+        skip: int = 0, 
+        limit: int = 100,
+        filters: Optional[Dict[str, Any]] = None
+    ) -> List[Room]:
+        """Lấy danh sách phòng với phân trang và bộ lọc."""
+        query = select(Room).options(selectinload(Room.room_type))
+        
+        # Áp dụng bộ lọc nếu có
+        if filters:
+            conditions = []
+            if "name" in filters and filters["name"]:
+                conditions.append(Room.name.ilike(f"%{filters['name']}%"))
+            if "room_type_id" in filters and filters["room_type_id"] is not None:
+                conditions.append(Room.room_type_id == filters["room_type_id"])
+            if "status" in filters and filters["status"]:
+                conditions.append(Room.status == filters["status"])
+            if "housekeeping_status" in filters and filters["housekeeping_status"]:
+                conditions.append(Room.housekeeping_status == filters["housekeeping_status"])
+            
+            if conditions:
+                query = query.where(and_(*conditions))
+        
+        # Phân trang
+        query = query.offset(skip).limit(limit)
+        
+        result = await self.session.execute(query)
+        return list(result.scalars().all())
+    
+    async def get(self, room_id: int) -> Optional[Room]:
+        """Lấy phòng theo ID."""
+        result = await self.session.execute(
+            select(Room)
+            .options(selectinload(Room.room_type))
+            .where(Room.id == room_id)
+        )
+        return result.scalar_one_or_none()
+    
+    async def get_by_name(self, name: str) -> Optional[Room]:
+        """Lấy phòng theo tên."""
+        result = await self.session.execute(
+            select(Room).where(Room.name == name)
+        )
+        return result.scalar_one_or_none()
+    
+    async def create(self, room_data: Dict[str, Any]) -> Room:
+        """Tạo phòng mới."""
+        room = Room(**room_data)
+        self.session.add(room)
+        await self.session.commit()
+        await self.session.refresh(room)
+        return room
+    
+    async def update(self, room_id: int, room_data: Dict[str, Any]) -> Optional[Room]:
+        """Cập nhật phòng."""
+        room = await self.get(room_id)
+        if not room:
+            return None
+        
+        # Cập nhật các trường
+        for field, value in room_data.items():
+            if hasattr(room, field) and value is not None:
+                setattr(room, field, value)
+        
+        await self.session.commit()
+        await self.session.refresh(room)
+        return room
+    
+    async def delete(self, room_id: int) -> bool:
+        """Xóa phòng (kiểm tra ràng buộc toàn vẹn)."""
+        room = await self.get(room_id)
+        if not room:
+            return False
+        
+        # Kiểm tra xem có booking nào đang sử dụng phòng này không
+        from ..models.booking import Booking
+        bookings_count = await self.session.execute(
+            select(func.count(Booking.id)).where(Booking.room_id == room_id)
+        )
+        if bookings_count.scalar() > 0:
+            raise ValueError("Không thể xóa phòng vì vẫn còn booking đang sử dụng")
+        
+        await self.session.delete(room)
+        await self.session.commit()
+        return True
+    
+    async def count(self, filters: Optional[Dict[str, Any]] = None) -> int:
+        """Đếm tổng số phòng với bộ lọc."""
+        query = select(func.count(Room.id))
+        
+        if filters:
+            conditions = []
+            if "name" in filters and filters["name"]:
+                conditions.append(Room.name.ilike(f"%{filters['name']}%"))
+            if "room_type_id" in filters and filters["room_type_id"] is not None:
+                conditions.append(Room.room_type_id == filters["room_type_id"])
+            if "status" in filters and filters["status"]:
+                conditions.append(Room.status == filters["status"])
+            if "housekeeping_status" in filters and filters["housekeeping_status"]:
+                conditions.append(Room.housekeeping_status == filters["housekeeping_status"])
+            
+            if conditions:
+                query = query.where(and_(*conditions))
+        
+        result = await self.session.execute(query)
+        return result.scalar() or 0
+    
+    async def get_available_rooms(self, room_type_id: Optional[int] = None) -> List[Room]:
+        """Lấy danh sách phòng có sẵn."""
+        query = select(Room).where(Room.status == RoomStatus.AVAILABLE)
+        
+        if room_type_id:
+            query = query.where(Room.room_type_id == room_type_id)
+        
+        result = await self.session.execute(query)
+        return list(result.scalars().all())
+    
+    async def get_rooms_by_status(self, status: RoomStatus) -> List[Room]:
+        """Lấy danh sách phòng theo trạng thái."""
+        result = await self.session.execute(
+            select(Room).where(Room.status == status)
+        )
+        return list(result.scalars().all())
+    
+    async def get_rooms_by_housekeeping_status(self, housekeeping_status: HousekeepingStatus) -> List[Room]:
+        """Lấy danh sách phòng theo trạng thái dọn dẹp."""
+        result = await self.session.execute(
+            select(Room).where(Room.housekeeping_status == housekeeping_status)
+        )
+        return list(result.scalars().all())
+    
+    async def update_status(self, room_id: int, status: RoomStatus) -> Optional[Room]:
+        """Cập nhật trạng thái phòng."""
+        room = await self.get(room_id)
+        if not room:
+            return None
+        
+        room.status = status
+        await self.session.commit()
+        await self.session.refresh(room)
+        return room
+    
+    async def update_housekeeping_status(self, room_id: int, housekeeping_status: HousekeepingStatus) -> Optional[Room]:
+        """Cập nhật trạng thái dọn dẹp phòng."""
+        room = await self.get(room_id)
+        if not room:
+            return None
+        
+        room.housekeeping_status = housekeeping_status
+        await self.session.commit()
+        await self.session.refresh(room)
+        return room
