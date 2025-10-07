@@ -1,12 +1,16 @@
+# app/main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
-from .routers import auth, room_types
-import logging
 from .db import create_tables
-from .routers import users
+import logging
+
+from .routers import auth, users, room_types, services, guests, rooms
+
 logging.basicConfig(level=logging.INFO)
+
 app = FastAPI(title=settings.app_name, debug=True)
+
 
 @app.on_event("startup")
 async def on_startup():
@@ -27,10 +31,14 @@ app.add_middleware(
 )
 
 
-@app.get("/", tags=["root"])
+@app.get("/", tags=["Root"])
 async def root():
     return {"message": "OK", "env": settings.app_env}
 
+
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
-app.include_router(room_types.router, prefix="/room-types", tags=["Room Types"])
 app.include_router(users.router, prefix="/users", tags=["Users"])
+app.include_router(room_types.router, prefix="/room-types", tags=["Room Types"])
+app.include_router(services.router, prefix="/services", tags=["Services"])
+app.include_router(guests.router, prefix="/guests", tags=["Guests"])
+app.include_router(rooms.router, prefix="/rooms", tags=["Rooms"])

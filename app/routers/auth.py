@@ -14,7 +14,6 @@ from ..dependencies import get_current_user
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
-
 @router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
 async def register(
     user_data: RegisterRequest, session: AsyncSession = Depends(get_session)

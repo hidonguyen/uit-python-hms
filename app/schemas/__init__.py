@@ -1,30 +1,59 @@
 from .user import UserCreate, UserUpdate, UserOut, UserLogin
-from .auth import LoginRequest, RegisterRequest, Token as AuthToken, UserOut as AuthUserOut
+from .auth import (
+    LoginRequest,
+    RegisterRequest,
+    Token as AuthToken,
+    UserOut as AuthUserOut,
+)
 from .room_type import RoomTypeCreate, RoomTypeUpdate, RoomTypeOut
-from .service import ServiceCreate, ServiceUpdate, ServiceOut
+from .service import ServiceCreate, ServiceUpdate, ServiceOut, PagedServiceOut
 from .room import RoomCreate, RoomUpdate, RoomOut
-from .guest import GuestCreate, GuestUpdate, GuestOut
-from .booking import BookingCreate, BookingUpdate, BookingOut
-from .booking_detail import BookingDetailCreate, BookingDetailUpdate, BookingDetailOut
-from .payment import PaymentCreate, PaymentUpdate, PaymentOut
+from .guest import GuestCreate, GuestUpdate, GuestOut, PagedGuestOut
+from .booking import (
+    BookingUpdate,
+    BookingOut,
+    BookingWithRelations,
+    PagedBookingOut,
+    BookingStatusUpdate,
+    PaymentStatusUpdate,
+    CheckInUpdate,
+    CheckOutUpdate,
+    BookingDetailIn,
+    BookingCreateWithDetails,
+)
 
 __all__ = [
-    # User schemas
-    "UserCreate", "UserUpdate", "UserOut", "UserLogin", "Token",
-    # Auth schemas
-    "LoginRequest", "RegisterRequest", "AuthToken", "AuthUserOut",
-    # Room Type schemas
-    "RoomTypeCreate", "RoomTypeUpdate", "RoomTypeOut",
-    # Service schemas
-    "ServiceCreate", "ServiceUpdate", "ServiceOut",
-    # Room schemas
-    "RoomCreate", "RoomUpdate", "RoomOut",
-    # Guest schemas
-    "GuestCreate", "GuestUpdate", "GuestOut",
-    # Booking schemas
-    "BookingCreate", "BookingUpdate", "BookingOut",
-    # Booking Detail schemas
-    "BookingDetailCreate", "BookingDetailUpdate", "BookingDetailOut",
-    # Payment schemas
-    "PaymentCreate", "PaymentUpdate", "PaymentOut",
+    "UserCreate",
+    "UserUpdate",
+    "UserOut",
+    "UserLogin",
+    "LoginRequest",
+    "RegisterRequest",
+    "AuthToken",
+    "AuthUserOut",
+    "Token",
+    "RoomTypeCreate",
+    "RoomTypeUpdate",
+    "RoomTypeOut",
+    "ServiceCreate",
+    "ServiceUpdate",
+    "ServiceOut",
+    "PagedServiceOut",
+    "RoomCreate",
+    "RoomUpdate",
+    "RoomOut",
+    "GuestCreate",
+    "GuestUpdate",
+    "GuestOut",
+    "PagedGuestOut",
+    "BookingUpdate",
+    "BookingOut",
+    "BookingWithRelations",
+    "PagedBookingOut",
+    "BookingStatusUpdate",
+    "PaymentStatusUpdate",
+    "CheckInUpdate",
+    "CheckOutUpdate",
+    "BookingDetailIn",
+    "BookingCreateWithDetails",
 ]
