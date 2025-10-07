@@ -26,7 +26,6 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # Get user from database
     result = await session.execute(select(User).where(User.username == username))
     user = result.scalar_one_or_none()
 

@@ -38,14 +38,12 @@ class Booking(Base):
     updated_at = mapped_column(DateTime(timezone=True), nullable=True)
     updated_by = mapped_column(BigInteger, ForeignKey("users.id", onupdate="CASCADE", ondelete="SET NULL"), nullable=True)
     
-    # Relationships
     room = relationship("Room", back_populates="bookings")
     room_type = relationship("RoomType", back_populates="bookings")
     primary_guest = relationship("Guest", back_populates="bookings")
     booking_details = relationship("BookingDetail", back_populates="booking", cascade="all, delete-orphan")
     payments = relationship("Payment", back_populates="booking", cascade="all, delete-orphan")
     
-    # Indexes and Constraints
     __table_args__ = (
         Index("ix_bookings_booking_no", "booking_no"),
         Index("ix_bookings_room_id", "room_id"),

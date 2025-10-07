@@ -34,7 +34,6 @@ class GuestRepository:
             if conditions:
                 query = query.where(and_(*conditions))
         
-        # Phân trang
         query = query.offset(skip).limit(limit)
         
         result = await self.session.execute(query)
@@ -75,7 +74,6 @@ class GuestRepository:
         if not guest:
             return None
         
-        # Cập nhật các trường
         for field, value in guest_data.items():
             if hasattr(guest, field) and value is not None:
                 setattr(guest, field, value)
@@ -90,7 +88,6 @@ class GuestRepository:
         if not guest:
             return False
         
-        # Kiểm tra xem có booking nào đang sử dụng khách hàng này không
         from ..models.booking import Booking
         bookings_count = await self.session.execute(
             select(func.count(Booking.id)).where(Booking.primary_guest_id == guest_id)

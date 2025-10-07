@@ -1,7 +1,8 @@
 from pydantic import BaseModel, Field, EmailStr
 from datetime import datetime, date
-from typing import Optional
+from typing import List, Optional
 from ..models.guest import Gender
+
 
 class GuestBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
@@ -13,8 +14,10 @@ class GuestBase(BaseModel):
     address: Optional[str] = None
     description: Optional[str] = None
 
+
 class GuestCreate(GuestBase):
     pass
+
 
 class GuestUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=200)
@@ -26,12 +29,21 @@ class GuestUpdate(BaseModel):
     address: Optional[str] = None
     description: Optional[str] = None
 
+
 class GuestOut(GuestBase):
     id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
-    
+
     model_config = {"from_attributes": True}
+
 
 class GuestWithRelations(GuestOut):
     bookings: list["BookingOut"] = []
+
+
+class PagedGuestOut(BaseModel):
+    total: int
+    skip: int
+    limit: int
+    items: List[GuestOut]

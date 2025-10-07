@@ -22,7 +22,6 @@ class BookingRepository:
             selectinload(Booking.primary_guest)
         )
         
-        # Áp dụng bộ lọc nếu có
         if filters:
             conditions = []
             if "booking_no" in filters and filters["booking_no"]:
@@ -51,10 +50,8 @@ class BookingRepository:
             if conditions:
                 query = query.where(and_(*conditions))
         
-        # Sắp xếp theo thời gian tạo mới nhất
         query = query.order_by(Booking.created_at.desc())
         
-        # Phân trang
         query = query.offset(skip).limit(limit)
         
         result = await self.session.execute(query)
@@ -96,7 +93,6 @@ class BookingRepository:
         if not booking:
             return None
         
-        # Cập nhật các trường
         for field, value in booking_data.items():
             if hasattr(booking, field) and value is not None:
                 setattr(booking, field, value)
@@ -111,7 +107,6 @@ class BookingRepository:
         if not booking:
             return False
         
-        # Kiểm tra xem có payment nào đang sử dụng booking này không
         from ..models.payment import Payment
         payments_count = await self.session.execute(
             select(func.count(Payment.id)).where(Payment.booking_id == booking_id)
