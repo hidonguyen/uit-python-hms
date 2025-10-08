@@ -1,6 +1,5 @@
 from sqlalchemy import BigInteger, String, Text, DateTime, Enum, ForeignKey, Index, CheckConstraint, SmallInteger
 from sqlalchemy.orm import mapped_column, relationship
-from sqlalchemy.sql import func
 from .base import Base
 import enum
 
@@ -18,11 +17,13 @@ class PaymentStatus(str, enum.Enum):
     PAID = "Paid"
 
 class Booking(Base):
+    def __init__(self, id=None):
+        super().__init__(id=id)
+
     __tablename__ = "bookings"
     
-    id = mapped_column(BigInteger, primary_key=True)
     booking_no = mapped_column(String(50), nullable=False, unique=True)
-    charge_type = mapped_column(Enum(ChargeType), nullable=False)
+    charge_type = mapped_column(Enum(ChargeType, name="ChargeType", native_enum=False, length=50, validate_strings=True), nullable=False)
     checkin = mapped_column(DateTime(timezone=True), nullable=False)
     checkout = mapped_column(DateTime(timezone=True), nullable=True)
     room_id = mapped_column(BigInteger, ForeignKey("rooms.id", onupdate="CASCADE", ondelete="RESTRICT"), nullable=False)
@@ -30,13 +31,9 @@ class Booking(Base):
     primary_guest_id = mapped_column(BigInteger, ForeignKey("guests.id", onupdate="CASCADE", ondelete="SET NULL"), nullable=True)
     num_adults = mapped_column(SmallInteger, nullable=False, default=1)
     num_children = mapped_column(SmallInteger, nullable=False, default=0)
-    status = mapped_column(Enum(BookingStatus), nullable=False, default=BookingStatus.CHECKED_IN)
-    payment_status = mapped_column(Enum(PaymentStatus), nullable=False, default=PaymentStatus.UNPAID)
+    status = mapped_column(Enum(BookingStatus, name="BookingStatus", native_enum=False, length=50, validate_strings=True), nullable=False, default=BookingStatus.CHECKED_IN)
+    payment_status = mapped_column(Enum(PaymentStatus, name="PaymentStatus", native_enum=False, length=50, validate_strings=True), nullable=False, default=PaymentStatus.UNPAID)
     notes = mapped_column(Text, nullable=True)
-    created_at = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
-    created_by = mapped_column(BigInteger, ForeignKey("users.id", onupdate="CASCADE", ondelete="SET NULL"), nullable=True)
-    updated_at = mapped_column(DateTime(timezone=True), nullable=True)
-    updated_by = mapped_column(BigInteger, ForeignKey("users.id", onupdate="CASCADE", ondelete="SET NULL"), nullable=True)
     
     room = relationship("Room", back_populates="bookings")
     room_type = relationship("RoomType", back_populates="bookings")

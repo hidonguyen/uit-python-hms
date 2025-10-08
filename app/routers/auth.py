@@ -36,9 +36,8 @@ async def register(
     hashed_password = get_password_hash(user_data.password)
     db_user = User(
         username=user_data.username,
-        role=user_data.role,
         password_hash=hashed_password,
-        status="Active",
+        role=user_data.role
     )
 
     created_user = await user_repo.create(db_user)

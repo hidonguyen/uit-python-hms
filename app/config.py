@@ -15,7 +15,7 @@ class Settings(BaseModel):
     postgres_user: str = os.getenv("POSTGRES_USER", "app_user")
     postgres_password: str = os.getenv("POSTGRES_PASSWORD", "app_password")
 
-    database_url: str | None = os.getenv("DATABASE_URL")
+    database_url: str = os.getenv("DATABASE_URL")
 
     secret_key: str = os.getenv("JWT_SECRET_KEY", os.getenv("SECRET_KEY", "your-secret-key-change-in-production"))
     algorithm: str = os.getenv("JWT_ALGORITHM", os.getenv("ALGORITHM", "HS256"))
