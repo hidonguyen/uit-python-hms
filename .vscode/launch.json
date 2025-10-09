@@ -3,7 +3,7 @@
     "configurations": [
         {
             "name": "Python: Uvicorn (no reload) — Debug",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "module": "uvicorn",
             "args": ["app.main:app"],
@@ -12,7 +12,7 @@
         },
         {
             "name": "Python: Uvicorn (reload) — Run",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "module": "uvicorn",
             "args": ["app.main:app", "--reload"],

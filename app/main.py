@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
-from .db import create_tables
+from .db import create_tables, seed_initial_data
 import logging
 
 from .routers import users, room_types, rooms, services, guests, bookings
@@ -15,6 +15,7 @@ app = FastAPI(title=settings.app_name, debug=True)
 @app.on_event("startup")
 async def on_startup():
     await create_tables()
+    await seed_initial_data()
 
 
 origins = [

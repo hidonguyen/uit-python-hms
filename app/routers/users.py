@@ -5,11 +5,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.schemas.auth import LoginRequest
-
 from ..config import settings
 from ..db import get_session
-from ..schemas.user import UserCreate, UserOut, UserUpdate, Token
+from ..schemas.user import UserCreate, UserOut, UserUpdate, UserLogin, Token
 from ..models.user import User, UserRole, UserStatus
 from ..services.auth_service import (
     create_access_token,
@@ -24,7 +22,7 @@ router = APIRouter()
 
 @router.post("/login", response_model=Token)
 async def login(
-    form_data: Annotated[LoginRequest, Depends()],
+    form_data: Annotated[UserLogin, Depends()],
     session: AsyncSession = Depends(get_session),
 ):
     user_repo = UserRepository(session)
