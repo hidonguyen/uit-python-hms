@@ -33,10 +33,6 @@ class ServiceOut(ServiceBase):
     model_config = {"from_attributes": True}
 
 
-class ServiceWithRelations(ServiceOut):
-    booking_details: list["BookingDetailOut"] = []
-
-
 class PagedServiceOut(BaseModel):
     total: int
     skip: int

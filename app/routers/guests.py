@@ -1,9 +1,7 @@
 # app/routers/guests.py
-from decimal import Decimal
 from typing import List, Optional, Dict, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_session
@@ -11,7 +9,7 @@ from ..models.guest import Gender
 from ..repositories.guest_repo import GuestRepository
 from ..schemas.guest import GuestCreate, GuestUpdate, GuestOut, PagedGuestOut
 
-router = APIRouter(prefix="/guests", tags=["Guests"])
+router = APIRouter()
 
 
 def get_repo(session: AsyncSession = Depends(get_session)) -> GuestRepository:

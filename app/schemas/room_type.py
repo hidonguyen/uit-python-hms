@@ -34,7 +34,3 @@ class RoomTypeOut(RoomTypeBase):
     updated_at: Optional[datetime] = None
     
     model_config = {"from_attributes": True}
-
-class RoomTypeWithRelations(RoomTypeOut):
-    rooms: list["RoomOut"] = []
-    bookings: list["BookingOut"] = []

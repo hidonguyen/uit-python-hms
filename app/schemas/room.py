@@ -32,11 +32,6 @@ class RoomOut(RoomBase):
     model_config = {"from_attributes": True}
 
 
-class RoomWithRelations(RoomOut):
-    room_type: Optional["RoomTypeOut"] = None
-    bookings: list["BookingOut"] = []
-
-
 class PagedRoomOut(BaseModel):
     total: int
     skip: int

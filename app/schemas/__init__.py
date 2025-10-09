@@ -12,7 +12,6 @@ from .guest import GuestCreate, GuestUpdate, GuestOut, PagedGuestOut
 from .booking import (
     BookingUpdate,
     BookingOut,
-    BookingWithRelations,
     PagedBookingOut,
     BookingStatusUpdate,
     PaymentStatusUpdate,
@@ -48,7 +47,6 @@ __all__ = [
     "PagedGuestOut",
     "BookingUpdate",
     "BookingOut",
-    "BookingWithRelations",
     "PagedBookingOut",
     "BookingStatusUpdate",
     "PaymentStatusUpdate",

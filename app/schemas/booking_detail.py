@@ -34,7 +34,3 @@ class BookingDetailOut(BookingDetailBase):
     updated_at: Optional[datetime] = None
     
     model_config = {"from_attributes": True}
-
-class BookingDetailWithRelations(BookingDetailOut):
-    booking: Optional["BookingOut"] = None
-    service: Optional["ServiceOut"] = None

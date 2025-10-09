@@ -30,6 +30,3 @@ class PaymentOut(PaymentBase):
     updated_at: Optional[datetime] = None
     
     model_config = {"from_attributes": True}
-
-class PaymentWithRelations(PaymentOut):
-    booking: Optional["BookingOut"] = None
