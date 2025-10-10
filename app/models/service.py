@@ -16,9 +16,6 @@ class ServiceStatus(str, enum.Enum):
 
 
 class Service(Base):
-    def __init__(self, id=None):
-        super().__init__(id=id)
-
     __tablename__ = "services"
 
     name = mapped_column(String(200), nullable=False)

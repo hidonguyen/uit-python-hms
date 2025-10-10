@@ -10,9 +10,6 @@ from .base import Base
 
 
 class RoomType(Base):
-    def __init__(self, id=None):
-        super().__init__(id=id)
-
     __tablename__ = "room_types"
 
     code = mapped_column(String(50), nullable=False, unique=True)

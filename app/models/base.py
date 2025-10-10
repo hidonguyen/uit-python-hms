@@ -11,6 +11,3 @@ class Base(DeclarativeBase):
     created_by = mapped_column(BigInteger, nullable=True)
     updated_at = mapped_column(DateTime(timezone=False), nullable=True)
     updated_by = mapped_column(BigInteger, nullable=True)
-
-    def __init__(self, id=None):
-        self.id = id

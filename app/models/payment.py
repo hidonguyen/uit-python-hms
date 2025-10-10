@@ -21,9 +21,6 @@ class PaymentMethod(str, enum.Enum):
 
 
 class Payment(Base):
-    def __init__(self, id=None):
-        super().__init__(id=id)
-
     __tablename__ = "payments"
 
     booking_id = mapped_column(

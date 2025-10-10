@@ -18,9 +18,6 @@ class RoomStatus(str, enum.Enum):
 
 
 class Room(Base):
-    def __init__(self, id=None):
-        super().__init__(id=id)
-
     __tablename__ = "rooms"
 
     name = mapped_column(String(100), nullable=False, unique=True)

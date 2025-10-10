@@ -22,9 +22,6 @@ class BookingDetailType(str, enum.Enum):
 
 
 class BookingDetail(Base):
-    def __init__(self, id=None):
-        super().__init__(id=id)
-
     __tablename__ = "booking_details"
 
     booking_id = mapped_column(

@@ -14,13 +14,6 @@ class UserStatus(str, enum.Enum):
     LOCKED = "Locked"
 
 class User(Base):
-    def __init__(self, id=None, username=None, role=None, password_hash=None, status=UserStatus.ACTIVE):
-        super().__init__(id=id)
-        self.username = username
-        self.role = role
-        self.password_hash = password_hash
-        self.status = status
-
     __tablename__ = "users"
     
     username = mapped_column(String(100), nullable=False, unique=True)

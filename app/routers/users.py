@@ -22,13 +22,13 @@ router = APIRouter()
 
 @router.post("/login", response_model=Token)
 async def login(
-    form_data: Annotated[UserLogin, Depends()],
+    payload: UserLogin,
     session: AsyncSession = Depends(get_session),
 ):
     user_repo = UserRepository(session)
-    user = await user_repo.get_by_username(form_data.username)
+    user = await user_repo.get_by_username(payload.username)
 
-    if not user or not verify_password(form_data.password, user.password_hash):
+    if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Tên người dùng hoặc mật khẩu không đúng",
@@ -70,7 +70,8 @@ async def list_users(
     session: AsyncSession = Depends(get_session),
     current: User = Depends(get_current_user),
 ):
-    require_manager(current)
+    await require_manager(current)
+    
     stmt = select(User).order_by(User.id.desc()).offset(skip).limit(limit)
     if q:
         stmt = (

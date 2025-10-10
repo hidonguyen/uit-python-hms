@@ -17,16 +17,6 @@ class BookingDetailBase(BaseModel):
 class BookingDetailCreate(BookingDetailBase):
     pass
 
-class BookingDetailUpdate(BaseModel):
-    booking_id: Optional[int] = None
-    type: Optional[BookingDetailType] = None
-    service_id: Optional[int] = None
-    description: Optional[str] = None
-    quantity: Optional[Decimal] = Field(None, ge=0)
-    unit_price: Optional[Decimal] = Field(None, ge=0)
-    discount_amount: Optional[Decimal] = Field(None, ge=0)
-    amount: Optional[Decimal] = Field(None, ge=0)
-
 class BookingDetailOut(BookingDetailBase):
     id: int
     issued_at: datetime

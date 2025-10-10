@@ -11,9 +11,6 @@ class Gender(str, enum.Enum):
 
 
 class Guest(Base):
-    def __init__(self, id=None):
-        super().__init__(id=id)
-
     __tablename__ = "guests"
 
     name = mapped_column(String(200), nullable=False)

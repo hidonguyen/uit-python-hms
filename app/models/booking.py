@@ -17,9 +17,6 @@ class PaymentStatus(str, enum.Enum):
     PAID = "Paid"
 
 class Booking(Base):
-    def __init__(self, id=None):
-        super().__init__(id=id)
-
     __tablename__ = "bookings"
     
     booking_no = mapped_column(String(50), nullable=False, unique=True)
