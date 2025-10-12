@@ -39,23 +39,6 @@ async def list_guests(
     return PagedGuestOut(total=total, skip=skip, limit=limit, items=items)
 
 
-@router.get("/search/name", response_model=List[GuestOut])
-async def search_by_name(name: str, repo: GuestRepository = Depends(get_repo)):
-    return await repo.search_by_name(name)
-
-
-@router.get("/search/phone", response_model=List[GuestOut])
-async def search_by_phone(phone: str, repo: GuestRepository = Depends(get_repo)):
-    return await repo.search_by_phone(phone)
-
-
-@router.get("/nationality/{nationality}", response_model=List[GuestOut])
-async def get_by_nationality(
-    nationality: str, repo: GuestRepository = Depends(get_repo)
-):
-    return await repo.get_guests_by_nationality(nationality)
-
-
 @router.get("/{guest_id}", response_model=GuestOut)
 async def get_guest(guest_id: int, repo: GuestRepository = Depends(get_repo)):
     guest = await repo.get(guest_id)

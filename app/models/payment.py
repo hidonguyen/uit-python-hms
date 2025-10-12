@@ -29,7 +29,7 @@ class Payment(Base):
         nullable=False,
     )
     paid_at = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
+        DateTime(timezone=False), nullable=False, server_default=func.now()
     )
     payment_method = mapped_column(Enum(PaymentMethod, name="PaymentMethod", native_enum=False, length=50, validate_strings=True), nullable=False)
     reference_no = mapped_column(String(100), nullable=True)

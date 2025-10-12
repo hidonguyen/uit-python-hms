@@ -5,6 +5,7 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime, date
 
 from app.models.payment import Payment
+from app.models.user import User
 from app.schemas.booking import BookingHistoryOut, TodayBookingOut
 from ..models.booking import Booking, BookingStatus
 from ..models.booking_detail import BookingDetail, BookingDetailType
@@ -15,7 +16,7 @@ from ..models.room_type import RoomType
 class BookingRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
-    
+
     async def list_today_bookings(
         self, 
         skip: int = 0, 
@@ -392,18 +393,23 @@ class BookingRepository:
         )
         return result.scalar_one_or_none()
     
-    async def create(self, booking_data: Dict[str, Any]) -> Booking:
+    async def create(self, booking_data: Dict[str, Any], current_user: User) -> Booking:
         """Tạo booking mới."""
         booking = Booking(**booking_data)
 
         booking.booking_no = await self.generate_booking_no()
 
+        booking.created_by = current_user.id
+        booking.created_at = datetime.now()
+
         self.session.add(booking)
+
         await self.session.commit()
         await self.session.refresh(booking)
+
         return booking
-    
-    async def update(self, booking_id: int, booking_data: Dict[str, Any]) -> Optional[Booking]:
+
+    async def update(self, booking_id: int, booking_data: Dict[str, Any], current_user: User) -> Optional[Booking]:
         """Cập nhật booking."""
         booking = await self.get(booking_id)
         if not booking:
@@ -412,7 +418,10 @@ class BookingRepository:
         for field, value in booking_data.items():
             if hasattr(booking, field) and value is not None:
                 setattr(booking, field, value)
-        
+
+        booking.updated_by = current_user.id
+        booking.updated_at = datetime.now()
+
         await self.session.commit()
         await self.session.refresh(booking)
         return booking
@@ -433,18 +442,6 @@ class BookingRepository:
         await self.session.delete(booking)
         await self.session.commit()
         return True
-    
-    async def checkout(self, booking_id: int, checkout_time: datetime) -> Optional[Booking]:
-        """Check-out booking."""
-        booking = await self.get(booking_id)
-        if not booking:
-            return None
-        
-        booking.checkout = checkout_time
-        booking.status = BookingStatus.CHECKED_OUT
-        await self.session.commit()
-        await self.session.refresh(booking)
-        return booking
     
     async def generate_booking_no(self) -> str:
         """Tự động sinh mã booking theo định dạng BKGYYMMDDXXX."""

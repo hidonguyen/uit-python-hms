@@ -37,7 +37,7 @@ class BookingDetail(Base):
         nullable=True,
     )
     issued_at = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
+        DateTime(timezone=False), nullable=False, server_default=func.now()
     )
     description = mapped_column(Text, nullable=True)
     quantity = mapped_column(Numeric(12, 2), nullable=False, default=1)

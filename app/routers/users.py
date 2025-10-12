@@ -164,7 +164,7 @@ async def update_user(
         values["status"] = payload.status
     if payload.password is not None:
         values["password_hash"] = get_password_hash(payload.password)
-    values["updated_at"] = datetime.utcnow()
+    values["updated_at"] = datetime.now()
     values["updated_by"] = current.id
 
     if values:
@@ -202,7 +202,7 @@ async def change_password(
         .where(User.id == user_id)
         .values(
             password_hash=get_password_hash(payload.password),
-            updated_at=datetime.utcnow(),
+            updated_at=datetime.now(),
             updated_by=current.id,
         )
     )

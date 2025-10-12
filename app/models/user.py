@@ -20,7 +20,7 @@ class User(Base):
     role = mapped_column(Enum(UserRole, name="UserRole", native_enum=False, length=50, validate_strings=True), nullable=False)
     password_hash = mapped_column(Text, nullable=False)
     status = mapped_column(Enum(UserStatus, name="UserStatus", native_enum=False, length=50, validate_strings=True), nullable=False, default=UserStatus.ACTIVE)
-    last_login_at = mapped_column(DateTime(timezone=True), nullable=True)
+    last_login_at = mapped_column(DateTime(timezone=False), nullable=True)
     
     __table_args__ = (
         Index("ix_users_username", "username"),

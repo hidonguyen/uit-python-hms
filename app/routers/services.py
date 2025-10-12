@@ -40,11 +40,6 @@ async def list_services(
     return PagedServiceOut(total=total, skip=skip, limit=limit, items=items)
 
 
-@router.get("/_active/list", response_model=List[ServiceOut])
-async def list_active_services(repo: ServiceRepository = Depends(get_repo)):
-    return await repo.get_active_services()
-
-
 @router.get("/{service_id}", response_model=ServiceOut)
 async def get_service(service_id: int, repo: ServiceRepository = Depends(get_repo)):
     svc = await repo.get(service_id)

@@ -31,7 +31,7 @@ class UserRepository:
     async def update_last_login(self, user: User) -> None:
         """Cập nhật thời gian đăng nhập cuối."""
         from datetime import datetime
-        user.last_login_at = datetime.utcnow()
+        user.last_login_at = datetime.now()
         await self.session.commit()
     
     async def count_users(self) -> int:

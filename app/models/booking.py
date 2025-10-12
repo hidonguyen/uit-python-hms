@@ -21,8 +21,8 @@ class Booking(Base):
     
     booking_no = mapped_column(String(50), nullable=False, unique=True)
     charge_type = mapped_column(Enum(ChargeType, name="ChargeType", native_enum=False, length=50, validate_strings=True), nullable=False)
-    checkin = mapped_column(DateTime(timezone=True), nullable=False)
-    checkout = mapped_column(DateTime(timezone=True), nullable=True)
+    checkin = mapped_column(DateTime(timezone=False), nullable=False)
+    checkout = mapped_column(DateTime(timezone=False), nullable=True)
     room_id = mapped_column(BigInteger, ForeignKey("rooms.id", onupdate="CASCADE", ondelete="RESTRICT"), nullable=False)
     room_type_id = mapped_column(BigInteger, ForeignKey("room_types.id", onupdate="CASCADE", ondelete="RESTRICT"), nullable=False)
     primary_guest_id = mapped_column(BigInteger, ForeignKey("guests.id", onupdate="CASCADE", ondelete="SET NULL"), nullable=True)
