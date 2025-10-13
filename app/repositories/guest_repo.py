@@ -1,11 +1,10 @@
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, or_
-from sqlalchemy.orm import selectinload
+from sqlalchemy import select, func, and_
 from typing import Optional, List, Dict, Any
 
 from app.models.user import User
-from ..models.guest import Guest, Gender
+from ..models.guest import Guest
 
 class GuestRepository:
     def __init__(self, session: AsyncSession):

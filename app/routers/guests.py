@@ -1,5 +1,5 @@
 # app/routers/guests.py
-from typing import List, Optional, Dict, Any
+from typing import Optional, Dict, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession

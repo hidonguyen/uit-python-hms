@@ -1,11 +1,11 @@
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, or_
+from sqlalchemy import select, func, and_
 from sqlalchemy.orm import selectinload
 from typing import Optional, List, Dict, Any
 
 from app.models.user import User
-from ..models.room import Room, RoomStatus, HousekeepingStatus
+from ..models.room import Room, RoomStatus
 
 class RoomRepository:
     def __init__(self, session: AsyncSession):
