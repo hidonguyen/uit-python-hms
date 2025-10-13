@@ -6,7 +6,7 @@ from .models import Base
 
 engine = create_async_engine(
     settings.db_url(),
-    echo=True,
+    echo=settings.app_debug,
     pool_pre_ping=True,
     future=True,
 )

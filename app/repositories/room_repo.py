@@ -1,11 +1,12 @@
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_
+from sqlalchemy import or_, select, func, and_
 from sqlalchemy.orm import selectinload
 from typing import Optional, List, Dict, Any
 
+from app.models.booking import Booking, BookingStatus
 from app.models.user import User
-from ..models.room import Room, RoomStatus
+from ..models.room import HousekeepingStatus, Room, RoomStatus
 
 class RoomRepository:
     def __init__(self, session: AsyncSession):
@@ -125,13 +126,46 @@ class RoomRepository:
         await self.session.delete(room)
         await self.session.commit()
         return True
-    
-    async def get_available_rooms(self, room_type_id: Optional[int] = None) -> List[Room]:
+
+    async def get_available_rooms(
+        self,
+        date: Optional[datetime] = None,
+        time: Optional[datetime] = None,
+        room_id: Optional[int] = None,
+        room_type_id: Optional[int] = None
+    ) -> List[Room]:
         """Lấy danh sách phòng có sẵn."""
-        query = select(Room).where(Room.status == RoomStatus.AVAILABLE)
-        
+
+        if not date:
+            date = datetime.today()
+
+        if time:
+            date = date.replace(hour=time.hour, minute=time.minute, second=time.second, microsecond=0)
+        else:
+            date = date.replace(hour=14, minute=0, second=0, microsecond=0)
+
+        # kiểm tra danh sách phòng có sẵn tại thời điểm cụ thể
+        subquery = (
+            select(Booking.room_id)
+            .where(
+                and_(
+                    or_(Booking.status == BookingStatus.RESERVED, Booking.status == BookingStatus.CHECKED_IN),
+                    Booking.checkin <= date,
+                    or_(not Booking.checkout, Booking.checkout > date)
+                )
+            )
+            .subquery()
+        )
+        query = select(Room).where(
+            and_(
+                Room.status == RoomStatus.AVAILABLE,
+                Room.housekeeping_status == HousekeepingStatus.CLEAN,
+                ~Room.id.in_(select(subquery.c.room_id))
+            )
+        )
+        if room_id:
+            query = query.where(Room.id == room_id)
         if room_type_id:
             query = query.where(Room.room_type_id == room_type_id)
-        
         result = await self.session.execute(query)
         return list(result.scalars().all())

@@ -1,4 +1,5 @@
 # app/routers/rooms.py
+from datetime import datetime
 from typing import List, Optional, Dict, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -50,10 +51,14 @@ async def list_rooms(
 
 @router.get("/available", response_model=List[RoomOut])
 async def list_available_rooms(
-    room_type_id: Optional[int] = None, repo: RoomRepository = Depends(get_room_repo),
+    date: Optional[datetime] = None,
+    time: Optional[datetime] = None,
+    room_id: Optional[int] = None,
+    room_type_id: Optional[int] = None, 
+    repo: RoomRepository = Depends(get_room_repo),
     _: User = Depends(require_receptionist)
 ):
-    return await repo.get_available_rooms(room_type_id=room_type_id)
+    return await repo.get_available_rooms(date=date, time=time, room_id=room_id, room_type_id=room_type_id)
 
 
 @router.get("/{room_id}", response_model=RoomOut)

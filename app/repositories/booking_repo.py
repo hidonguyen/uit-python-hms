@@ -11,7 +11,7 @@ from app.schemas.booking import BookingHistoryOut, TodayBookingOut
 from ..models.booking import Booking, BookingStatus, PaymentStatus
 from ..models.booking_detail import BookingDetail, BookingDetailType
 from ..models.guest import Guest
-from ..models.room import Room
+from ..models.room import HousekeepingStatus, Room, RoomStatus
 from ..models.room_type import RoomType
 
 class BookingRepository:
@@ -481,8 +481,16 @@ class BookingRepository:
         booking.updated_by = current_user.id
         booking.updated_at = datetime.now()
 
+        room = await self.session.get(Room, booking.room_id)
+        if room:
+            room.status = RoomStatus.OCCUPIED
+            room.updated_by = current_user.id
+            room.updated_at = datetime.now()
+            self.session.add(room)
+
         await self.session.commit()
         await self.session.refresh(booking)
+        await self.session.refresh(room)
         return booking
 
     async def checkout(self, booking_id: int, current_user: User) -> Optional[Booking]:
@@ -528,15 +536,24 @@ class BookingRepository:
                     created_at=datetime.now()
                 )
                 self.session.add(payment)
-                await self.session.flush()  # Đảm bảo payment được thêm vào session
 
             booking.payment_status = PaymentStatus.PAID
 
             booking.updated_by = current_user.id
             booking.updated_at = datetime.now()
 
+            room = await self.session.get(Room, booking.room_id)
+            if room:
+                room.status = RoomStatus.AVAILABLE
+                room.housekeeping_status = HousekeepingStatus.DIRTY
+                room.updated_by = current_user.id
+                room.updated_at = datetime.now()
+                self.session.add(room)
+
             await self.session.commit()
             await self.session.refresh(booking)
+            await self.session.refresh(payment)
+            await self.session.refresh(room)
         
         except Exception as e:
             await self.session.rollback()
