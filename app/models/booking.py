@@ -8,8 +8,11 @@ class ChargeType(str, enum.Enum):
     NIGHT = "Night"
 
 class BookingStatus(str, enum.Enum):
+    RESERVED = "Reserved"
     CHECKED_IN = "CheckedIn"
     CHECKED_OUT = "CheckedOut"
+    CANCELLED = "Cancelled"
+    NO_SHOW = "NoShow"
 
 class PaymentStatus(str, enum.Enum):
     UNPAID = "Unpaid"
