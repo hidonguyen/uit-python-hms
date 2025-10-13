@@ -23,34 +23,19 @@ class PaymentMethod(str, enum.Enum):
 class Payment(Base):
     __tablename__ = "payments"
 
-    id = mapped_column(BigInteger, primary_key=True)
     booking_id = mapped_column(
         BigInteger,
         ForeignKey("bookings.id", onupdate="CASCADE", ondelete="CASCADE"),
         nullable=False,
     )
     paid_at = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
+        DateTime(timezone=False), nullable=False, server_default=func.now()
     )
-    payment_method = mapped_column(Enum(PaymentMethod), nullable=False)
+    payment_method = mapped_column(Enum(PaymentMethod, name="PaymentMethod", native_enum=False, length=50, validate_strings=True), nullable=False)
     reference_no = mapped_column(String(100), nullable=True)
     amount = mapped_column(Numeric(12, 2), nullable=False)
     payer_name = mapped_column(String(200), nullable=True)
     notes = mapped_column(Text, nullable=True)
-    created_at = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
-    )
-    created_by = mapped_column(
-        BigInteger,
-        ForeignKey("users.id", onupdate="CASCADE", ondelete="SET NULL"),
-        nullable=True,
-    )
-    updated_at = mapped_column(DateTime(timezone=True), nullable=True)
-    updated_by = mapped_column(
-        BigInteger,
-        ForeignKey("users.id", onupdate="CASCADE", ondelete="SET NULL"),
-        nullable=True,
-    )
 
     booking = relationship("Booking", back_populates="payments")
 

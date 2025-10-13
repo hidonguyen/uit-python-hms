@@ -35,11 +35,6 @@ class UserOut(UserBase):
     model_config = {"from_attributes": True}
 
 
-class UserWithRelations(UserOut):
-    created_users: list["UserOut"] = []
-    updated_users: list["UserOut"] = []
-
-
 class Token(BaseModel):
     access_token: str
     token_type: str

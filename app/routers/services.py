@@ -11,7 +11,7 @@ from ..models.service import ServiceStatus
 from ..repositories.service_repo import ServiceRepository
 from ..schemas.service import ServiceCreate, ServiceUpdate, ServiceOut, PagedServiceOut
 
-router = APIRouter(prefix="/services", tags=["Services"])
+router = APIRouter()
 
 def get_repo(session: AsyncSession = Depends(get_session)) -> ServiceRepository:
     return ServiceRepository(session)
@@ -38,11 +38,6 @@ async def list_services(
     total = await repo.count(filters)
     items = await repo.list(skip=skip, limit=limit, filters=filters)
     return PagedServiceOut(total=total, skip=skip, limit=limit, items=items)
-
-
-@router.get("/_active/list", response_model=List[ServiceOut])
-async def list_active_services(repo: ServiceRepository = Depends(get_repo)):
-    return await repo.get_active_services()
 
 
 @router.get("/{service_id}", response_model=ServiceOut)

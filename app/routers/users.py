@@ -1,26 +1,65 @@
-from datetime import datetime
-from typing import List, Optional
+from datetime import datetime, timedelta
+from typing import Annotated, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select, update, delete
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..auth import get_password_hash
+from ..config import settings
 from ..db import get_session
-from ..dependencies import get_current_user
+from ..schemas.user import UserCreate, UserOut, UserUpdate, UserLogin, Token
 from ..models.user import User, UserRole, UserStatus
-from ..schemas.user import (
-    UserCreate,
-    UserUpdate,
-    UserOut,
+from ..services.auth_service import (
+    create_access_token,
+    get_current_user,
+    get_password_hash,
+    require_manager,
+    verify_password,
 )
+from app.repositories.user_repo import UserRepository
 
-router = APIRouter(prefix="/users", tags=["Users"])
+router = APIRouter()
+
+@router.post("/login", response_model=Token)
+async def login(
+    payload: UserLogin,
+    session: AsyncSession = Depends(get_session),
+):
+    user_repo = UserRepository(session)
+    user = await user_repo.get_by_username(payload.username)
+
+    if not user or not verify_password(payload.password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Tên người dùng hoặc mật khẩu không đúng",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if user.status != UserStatus.ACTIVE:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Tài khoản người dùng đã bị khóa",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    await user_repo.update_last_login(user)
+
+    access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
+    access_token = create_access_token(
+        data={"sub": user.username, "role": user.role.value},
+        expires_delta=access_token_expires,
+    )
+
+    return {
+        "access_token": access_token,
+        "token_type": "Bearer",
+        "expires_in": settings.access_token_expire_minutes * 60,
+    }
 
 
-def require_manager(user: User):
-    if user.role != UserRole.MANAGER:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+@router.get("/me", response_model=UserOut)
+async def get_current_user_info(current_user: User = Depends(get_current_user)):
+    return current_user
 
 
 @router.get("/", response_model=List[UserOut])
@@ -31,7 +70,8 @@ async def list_users(
     session: AsyncSession = Depends(get_session),
     current: User = Depends(get_current_user),
 ):
-    require_manager(current)
+    await require_manager(current)
+    
     stmt = select(User).order_by(User.id.desc()).offset(skip).limit(limit)
     if q:
         stmt = (
@@ -124,7 +164,7 @@ async def update_user(
         values["status"] = payload.status
     if payload.password is not None:
         values["password_hash"] = get_password_hash(payload.password)
-    values["updated_at"] = datetime.utcnow()
+    values["updated_at"] = datetime.now()
     values["updated_by"] = current.id
 
     if values:
@@ -162,7 +202,7 @@ async def change_password(
         .where(User.id == user_id)
         .values(
             password_hash=get_password_hash(payload.password),
-            updated_at=datetime.utcnow(),
+            updated_at=datetime.now(),
             updated_by=current.id,
         )
     )

@@ -111,10 +111,3 @@ class ServiceRepository:
         
         result = await self.session.execute(query)
         return result.scalar() or 0
-    
-    async def get_active_services(self) -> List[Service]:
-        """Lấy danh sách dịch vụ đang hoạt động."""
-        result = await self.session.execute(
-            select(Service).where(Service.status == ServiceStatus.ACTIVE)
-        )
-        return list(result.scalars().all())

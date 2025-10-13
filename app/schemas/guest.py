@@ -38,10 +38,6 @@ class GuestOut(GuestBase):
     model_config = {"from_attributes": True}
 
 
-class GuestWithRelations(GuestOut):
-    bookings: list["BookingOut"] = []
-
-
 class PagedGuestOut(BaseModel):
     total: int
     skip: int

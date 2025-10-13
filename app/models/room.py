@@ -1,6 +1,5 @@
-from sqlalchemy import BigInteger, String, Text, DateTime, Enum, ForeignKey, Index
+from sqlalchemy import BigInteger, String, Text, Enum, ForeignKey, Index
 from sqlalchemy.orm import mapped_column, relationship
-from sqlalchemy.sql import func
 from .base import Base
 import enum
 
@@ -21,7 +20,6 @@ class RoomStatus(str, enum.Enum):
 class Room(Base):
     __tablename__ = "rooms"
 
-    id = mapped_column(BigInteger, primary_key=True)
     name = mapped_column(String(100), nullable=False, unique=True)
     room_type_id = mapped_column(
         BigInteger,
@@ -30,24 +28,10 @@ class Room(Base):
     )
     description = mapped_column(Text, nullable=True)
     housekeeping_status = mapped_column(
-        Enum(HousekeepingStatus), nullable=False, default=HousekeepingStatus.CLEAN
+        Enum(HousekeepingStatus, name="HousekeepingStatus", native_enum=False, length=50, validate_strings=True), nullable=False, default=HousekeepingStatus.CLEAN
     )
     status = mapped_column(
-        Enum(RoomStatus), nullable=False, default=RoomStatus.AVAILABLE
-    )
-    created_at = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
-    )
-    created_by = mapped_column(
-        BigInteger,
-        ForeignKey("users.id", onupdate="CASCADE", ondelete="SET NULL"),
-        nullable=True,
-    )
-    updated_at = mapped_column(DateTime(timezone=True), nullable=True)
-    updated_by = mapped_column(
-        BigInteger,
-        ForeignKey("users.id", onupdate="CASCADE", ondelete="SET NULL"),
-        nullable=True,
+        Enum(RoomStatus, name="RoomStatus", native_enum=False, length=50, validate_strings=True), nullable=False, default=RoomStatus.AVAILABLE
     )
 
     room_type = relationship("RoomType", back_populates="rooms")

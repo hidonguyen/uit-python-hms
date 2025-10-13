@@ -125,39 +125,3 @@ class RoomRepository:
         
         result = await self.session.execute(query)
         return list(result.scalars().all())
-    
-    async def get_rooms_by_status(self, status: RoomStatus) -> List[Room]:
-        """Lấy danh sách phòng theo trạng thái."""
-        result = await self.session.execute(
-            select(Room).where(Room.status == status)
-        )
-        return list(result.scalars().all())
-    
-    async def get_rooms_by_housekeeping_status(self, housekeeping_status: HousekeepingStatus) -> List[Room]:
-        """Lấy danh sách phòng theo trạng thái dọn dẹp."""
-        result = await self.session.execute(
-            select(Room).where(Room.housekeeping_status == housekeeping_status)
-        )
-        return list(result.scalars().all())
-    
-    async def update_status(self, room_id: int, status: RoomStatus) -> Optional[Room]:
-        """Cập nhật trạng thái phòng."""
-        room = await self.get(room_id)
-        if not room:
-            return None
-        
-        room.status = status
-        await self.session.commit()
-        await self.session.refresh(room)
-        return room
-    
-    async def update_housekeeping_status(self, room_id: int, housekeeping_status: HousekeepingStatus) -> Optional[Room]:
-        """Cập nhật trạng thái dọn dẹp phòng."""
-        room = await self.get(room_id)
-        if not room:
-            return None
-        
-        room.housekeeping_status = housekeeping_status
-        await self.session.commit()
-        await self.session.refresh(room)
-        return room

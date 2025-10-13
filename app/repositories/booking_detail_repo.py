@@ -3,6 +3,8 @@ from sqlalchemy import select, func, and_, or_
 from sqlalchemy.orm import selectinload
 from typing import Optional, List, Dict, Any
 from datetime import datetime
+
+from app.models.user import User
 from ..models.booking_detail import BookingDetail, BookingDetailType
 
 
@@ -58,16 +60,21 @@ class BookingDetailRepository:
         )
         return result.scalar_one_or_none()
 
-    async def create(self, booking_detail_data: Dict[str, Any]) -> BookingDetail:
+    async def create(self, booking_detail_data: Dict[str, Any], current_user: User) -> BookingDetail:
         """Tạo booking detail mới."""
         booking_detail = BookingDetail(**booking_detail_data)
+
+        booking_detail.created_by = current_user.id
+        booking_detail.created_at = datetime.now()
+
         self.session.add(booking_detail)
+
         await self.session.commit()
         await self.session.refresh(booking_detail)
         return booking_detail
 
     async def update(
-        self, booking_detail_id: int, booking_detail_data: Dict[str, Any]
+        self, booking_detail_id: int, booking_detail_data: Dict[str, Any], current_user: User
     ) -> Optional[BookingDetail]:
         """Cập nhật booking detail."""
         booking_detail = await self.get(booking_detail_id)
@@ -77,6 +84,9 @@ class BookingDetailRepository:
         for field, value in booking_detail_data.items():
             if hasattr(booking_detail, field) and value is not None:
                 setattr(booking_detail, field, value)
+
+        booking_detail.updated_by = current_user.id
+        booking_detail.updated_at = datetime.now()
 
         await self.session.commit()
         await self.session.refresh(booking_detail)
@@ -121,20 +131,6 @@ class BookingDetailRepository:
         )
         return list(result.scalars().all())
 
-    async def get_by_type(self, type: BookingDetailType) -> List[BookingDetail]:
-        """Lấy danh sách booking detail theo loại."""
-        result = await self.session.execute(
-            select(BookingDetail).where(BookingDetail.type == type)
-        )
-        return list(result.scalars().all())
-
-    async def get_by_service_id(self, service_id: int) -> List[BookingDetail]:
-        """Lấy danh sách booking detail theo service ID."""
-        result = await self.session.execute(
-            select(BookingDetail).where(BookingDetail.service_id == service_id)
-        )
-        return list(result.scalars().all())
-
     async def get_room_charges(self, booking_id: int) -> List[BookingDetail]:
         """Lấy danh sách phí phòng cho booking."""
         result = await self.session.execute(
@@ -155,7 +151,7 @@ class BookingDetailRepository:
             .where(
                 and_(
                     BookingDetail.booking_id == booking_id,
-                    BookingDetail.type == BookingDetailType.SERVICE,
+                    BookingDetail.type != BookingDetailType.ROOM,
                 )
             )
         )

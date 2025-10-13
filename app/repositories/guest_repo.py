@@ -46,20 +46,6 @@ class GuestRepository:
         )
         return result.scalar_one_or_none()
     
-    async def get_by_phone(self, phone: str) -> Optional[Guest]:
-        """Lấy khách hàng theo số điện thoại."""
-        result = await self.session.execute(
-            select(Guest).where(Guest.phone == phone)
-        )
-        return result.scalar_one_or_none()
-    
-    async def get_by_email(self, email: str) -> Optional[Guest]:
-        """Lấy khách hàng theo email."""
-        result = await self.session.execute(
-            select(Guest).where(Guest.email == email)
-        )
-        return result.scalar_one_or_none()
-    
     async def create(self, guest_data: Dict[str, Any]) -> Guest:
         """Tạo khách hàng mới."""
         guest = Guest(**guest_data)
@@ -121,24 +107,3 @@ class GuestRepository:
         
         result = await self.session.execute(query)
         return result.scalar() or 0
-    
-    async def search_by_name(self, name: str) -> List[Guest]:
-        """Tìm kiếm khách hàng theo tên."""
-        result = await self.session.execute(
-            select(Guest).where(Guest.name.ilike(f"%{name}%"))
-        )
-        return list(result.scalars().all())
-    
-    async def search_by_phone(self, phone: str) -> List[Guest]:
-        """Tìm kiếm khách hàng theo số điện thoại."""
-        result = await self.session.execute(
-            select(Guest).where(Guest.phone.ilike(f"%{phone}%"))
-        )
-        return list(result.scalars().all())
-    
-    async def get_guests_by_nationality(self, nationality: str) -> List[Guest]:
-        """Lấy danh sách khách hàng theo quốc tịch."""
-        result = await self.session.execute(
-            select(Guest).where(Guest.nationality == nationality)
-        )
-        return list(result.scalars().all())

@@ -3,7 +3,7 @@ from sqlalchemy import (
     Text,
     Numeric,
     DateTime,
-    Enum as PgEnum,
+    Enum,
     ForeignKey,
     Index,
     CheckConstraint,
@@ -21,25 +21,15 @@ class BookingDetailType(str, enum.Enum):
     ADJUSTMENT = "Adjustment"
 
 
-BOOKING_DETAIL_PG_ENUM = PgEnum(
-    BookingDetailType,
-    name="bookingdetailtype",
-    native_enum=True,
-    validate_strings=True,
-    create_type=True,
-)
-
-
 class BookingDetail(Base):
     __tablename__ = "booking_details"
 
-    id = mapped_column(BigInteger, primary_key=True)
     booking_id = mapped_column(
         BigInteger,
         ForeignKey("bookings.id", onupdate="CASCADE", ondelete="CASCADE"),
         nullable=False,
     )
-    type = mapped_column(BOOKING_DETAIL_PG_ENUM, nullable=False)
+    type = mapped_column(Enum(BookingDetailType, name="BookingDetailType", native_enum=False, length=50, validate_strings=True), nullable=False)
 
     service_id = mapped_column(
         BigInteger,
@@ -47,27 +37,13 @@ class BookingDetail(Base):
         nullable=True,
     )
     issued_at = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
+        DateTime(timezone=False), nullable=False, server_default=func.now()
     )
     description = mapped_column(Text, nullable=True)
     quantity = mapped_column(Numeric(12, 2), nullable=False, default=1)
     unit_price = mapped_column(Numeric(12, 2), nullable=False, default=0)
     discount_amount = mapped_column(Numeric(12, 2), nullable=False, default=0)
     amount = mapped_column(Numeric(12, 2), nullable=False)
-    created_at = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
-    )
-    created_by = mapped_column(
-        BigInteger,
-        ForeignKey("users.id", onupdate="CASCADE", ondelete="SET NULL"),
-        nullable=True,
-    )
-    updated_at = mapped_column(DateTime(timezone=True), nullable=True)
-    updated_by = mapped_column(
-        BigInteger,
-        ForeignKey("users.id", onupdate="CASCADE", ondelete="SET NULL"),
-        nullable=True,
-    )
 
     booking = relationship("Booking", back_populates="booking_details")
     service = relationship("Service", back_populates="booking_details")

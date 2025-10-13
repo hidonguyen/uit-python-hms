@@ -1,9 +1,7 @@
 # app/routers/guests.py
-from decimal import Decimal
 from typing import List, Optional, Dict, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_session
@@ -11,7 +9,7 @@ from ..models.guest import Gender
 from ..repositories.guest_repo import GuestRepository
 from ..schemas.guest import GuestCreate, GuestUpdate, GuestOut, PagedGuestOut
 
-router = APIRouter(prefix="/guests", tags=["Guests"])
+router = APIRouter()
 
 
 def get_repo(session: AsyncSession = Depends(get_session)) -> GuestRepository:
@@ -39,23 +37,6 @@ async def list_guests(
     total = await repo.count(filters)
     items = await repo.list(skip=skip, limit=limit, filters=filters)
     return PagedGuestOut(total=total, skip=skip, limit=limit, items=items)
-
-
-@router.get("/search/name", response_model=List[GuestOut])
-async def search_by_name(name: str, repo: GuestRepository = Depends(get_repo)):
-    return await repo.search_by_name(name)
-
-
-@router.get("/search/phone", response_model=List[GuestOut])
-async def search_by_phone(phone: str, repo: GuestRepository = Depends(get_repo)):
-    return await repo.search_by_phone(phone)
-
-
-@router.get("/nationality/{nationality}", response_model=List[GuestOut])
-async def get_by_nationality(
-    nationality: str, repo: GuestRepository = Depends(get_repo)
-):
-    return await repo.get_guests_by_nationality(nationality)
 
 
 @router.get("/{guest_id}", response_model=GuestOut)

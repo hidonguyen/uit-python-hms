@@ -17,7 +17,7 @@ from ..schemas.room import (
     HousekeepingStatusUpdate,
 )
 
-router = APIRouter(prefix="/rooms", tags=["Rooms"])
+router = APIRouter()
 
 
 def get_repo(session: AsyncSession = Depends(get_session)) -> RoomRepository:
@@ -43,6 +43,13 @@ async def list_rooms(
     total = await repo.count(filters)
     items = await repo.list(skip=skip, limit=limit, filters=filters)
     return PagedRoomOut(total=total, skip=skip, limit=limit, items=items)
+
+
+@router.get("/available", response_model=List[RoomOut])
+async def list_available_rooms(
+    room_type_id: Optional[int] = None, repo: RoomRepository = Depends(get_repo)
+):
+    return await repo.get_available_rooms(room_type_id=room_type_id)
 
 
 @router.get("/{room_id}", response_model=RoomOut)
@@ -99,30 +106,11 @@ async def delete_room(room_id: int, repo: RoomRepository = Depends(get_repo)):
     return None
 
 
-@router.get("/_available/list", response_model=List[RoomOut])
-async def list_available_rooms(
-    room_type_id: Optional[int] = None, repo: RoomRepository = Depends(get_repo)
-):
-    return await repo.get_available_rooms(room_type_id=room_type_id)
-
-
-@router.get("/status/{status}", response_model=List[RoomOut])
-async def list_by_status(status: RoomStatus, repo: RoomRepository = Depends(get_repo)):
-    return await repo.get_rooms_by_status(status)
-
-
-@router.get("/housekeeping/{housekeeping_status}", response_model=List[RoomOut])
-async def list_by_housekeeping(
-    housekeeping_status: HousekeepingStatus, repo: RoomRepository = Depends(get_repo)
-):
-    return await repo.get_rooms_by_housekeeping_status(housekeeping_status)
-
-
 @router.patch("/{room_id}/status", response_model=RoomOut)
 async def update_room_status(
     room_id: int, payload: RoomStatusUpdate, repo: RoomRepository = Depends(get_repo)
 ):
-    updated = await repo.update_status(room_id, payload.status)
+    updated = await repo.update(room_id, {"status": payload.status})
     if not updated:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Room not found"
@@ -136,9 +124,7 @@ async def update_room_housekeeping(
     payload: HousekeepingStatusUpdate,
     repo: RoomRepository = Depends(get_repo),
 ):
-    updated = await repo.update_housekeeping_status(
-        room_id, payload.housekeeping_status
-    )
+    updated = await repo.update(room_id, {"housekeeping_status": payload.housekeeping_status})
     if not updated:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Room not found"
