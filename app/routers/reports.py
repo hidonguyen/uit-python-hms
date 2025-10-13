@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_session
+from app.models.user import User
 from app.schemas.report import (
     SummaryOut,
     RoomTypeRevenueOut,
@@ -23,6 +24,7 @@ from app.repositories.report_repo import (
     get_customer_distribution,
     get_bookings_per_day,
 )
+from app.services.auth_service import require_manager
 
 router = APIRouter()
 
@@ -66,6 +68,7 @@ async def summary(
     start_date: Annotated[str, Query(..., description="DD-MM-YYYY")],
     end_date: Annotated[str, Query(..., description="DD-MM-YYYY")],
     session: AsyncSession = Depends(get_session),
+    _: User = Depends(require_manager),
 ):
     s = parse_flexible_date(start_date)
     e = parse_flexible_date(end_date)
@@ -91,6 +94,7 @@ async def revenue_by_room_type(
     start_date: Annotated[str, Query(..., description="DD-MM-YYYY")],
     end_date: Annotated[str, Query(..., description="DD-MM-YYYY")],
     session: AsyncSession = Depends(get_session),
+    _: User = Depends(require_manager),
 ):
     s = parse_flexible_date(start_date)
     e = parse_flexible_date(end_date)
@@ -119,6 +123,7 @@ async def service_revenue(
     start_date: Annotated[str, Query(..., description="DD-MM-YYYY")],
     end_date: Annotated[str, Query(..., description="DD-MM-YYYY")],
     session: AsyncSession = Depends(get_session),
+    _: User = Depends(require_manager),
 ):
     s = parse_flexible_date(start_date)
     e = parse_flexible_date(end_date)
@@ -147,6 +152,7 @@ async def customer_distribution(
     start_date: Annotated[str, Query(..., description="DD-MM-YYYY")],
     end_date: Annotated[str, Query(..., description="DD-MM-YYYY")],
     session: AsyncSession = Depends(get_session),
+    _: User = Depends(require_manager),
 ):
     s = parse_flexible_date(start_date)
     e = parse_flexible_date(end_date)
@@ -166,6 +172,7 @@ async def bookings_per_day(
     start_date: Annotated[str, Query(..., description="DD-MM-YYYY")],
     end_date: Annotated[str, Query(..., description="DD-MM-YYYY")],
     session: AsyncSession = Depends(get_session),
+    _: User = Depends(require_manager),
 ):
     s = parse_flexible_date(start_date)
     e = parse_flexible_date(end_date)
