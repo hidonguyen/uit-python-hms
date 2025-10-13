@@ -17,7 +17,6 @@ class GuestRepository:
         """Lấy danh sách khách hàng với phân trang và bộ lọc."""
         query = select(Guest)
         
-        # Áp dụng bộ lọc nếu có
         if filters:
             conditions = []
             if "name" in filters and filters["name"]:

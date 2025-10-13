@@ -6,11 +6,12 @@ from .config import settings
 from .db import create_tables, seed_initial_data
 import logging
 
-from .routers import users, room_types, rooms, services, guests, bookings
+from .routers import users, room_types, rooms, services, guests, bookings, reports
 
 logging.basicConfig(level=logging.INFO)
 
 app = FastAPI(title=settings.app_name, debug=True)
+
 
 @app.on_event("startup")
 async def on_startup():
@@ -19,6 +20,8 @@ async def on_startup():
 
 
 origins = [
+    "http://127.0.0.1:5500",
+    "http://localhost:5500",
     "http://127.0.0.1:8000",
     "http://localhost:8000",
 ]
@@ -37,3 +40,4 @@ app.include_router(rooms.router, prefix="/api/rooms", tags=["Rooms"])
 app.include_router(services.router, prefix="/api/services", tags=["Services"])
 app.include_router(guests.router, prefix="/api/guests", tags=["Guests"])
 app.include_router(bookings.router, prefix="/api/bookings", tags=["Bookings"])
+app.include_router(reports.router, prefix="/api/reports", tags=["Reports"])
