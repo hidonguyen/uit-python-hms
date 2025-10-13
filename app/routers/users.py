@@ -13,10 +13,10 @@ from ..services.auth_service import (
     create_access_token,
     get_current_user,
     get_password_hash,
-    require_manager,
     verify_password,
 )
 from app.repositories.user_repo import UserRepository
+from app.services.auth_service import require_manager
 
 router = APIRouter()
 
@@ -68,10 +68,8 @@ async def list_users(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     session: AsyncSession = Depends(get_session),
-    current: User = Depends(get_current_user),
+    _: User = Depends(require_manager),
 ):
-    await require_manager(current)
-    
     stmt = select(User).order_by(User.id.desc()).offset(skip).limit(limit)
     if q:
         stmt = (
@@ -89,14 +87,13 @@ async def list_users(
 async def get_user(
     user_id: int,
     session: AsyncSession = Depends(get_session),
-    current: User = Depends(get_current_user),
+    _: User = Depends(require_manager)
 ):
-    require_manager(current)
     res = await session.execute(select(User).where(User.id == user_id))
     user = res.scalar_one_or_none()
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy thông tin người dùng"
         )
     return user
 
@@ -105,15 +102,14 @@ async def get_user(
 async def create_user(
     payload: UserCreate,
     session: AsyncSession = Depends(get_session),
-    current: User = Depends(get_current_user),
+    current_user: User = Depends(require_manager)
 ):
-    require_manager(current)
     existed = await session.execute(
         select(User.id).where(User.username == payload.username)
     )
     if existed.scalar_one_or_none():
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Username already exists"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Tên người dùng đã tồn tại"
         )
 
     user = User(
@@ -121,7 +117,7 @@ async def create_user(
         role=payload.role,
         password_hash=get_password_hash(payload.password),
         status=UserStatus.ACTIVE,
-        created_by=current.id,
+        created_by=current_user.id,
     )
     session.add(user)
     await session.commit()
@@ -134,15 +130,13 @@ async def update_user(
     user_id: int,
     payload: UserUpdate,
     session: AsyncSession = Depends(get_session),
-    current: User = Depends(get_current_user),
+    current_user: User = Depends(require_manager)
 ):
-    require_manager(current)
-
     res = await session.execute(select(User).where(User.id == user_id))
     user = res.scalar_one_or_none()
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy thông tin người dùng"
         )
 
     if payload.username and payload.username != user.username:
@@ -151,8 +145,7 @@ async def update_user(
         )
         if chk.scalar_one_or_none():
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Username already exists",
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Tên người dùng đã tồn tại"
             )
 
     values = {}
@@ -165,7 +158,7 @@ async def update_user(
     if payload.password is not None:
         values["password_hash"] = get_password_hash(payload.password)
     values["updated_at"] = datetime.now()
-    values["updated_by"] = current.id
+    values["updated_by"] = current_user.id
 
     if values:
         await session.execute(update(User).where(User.id == user_id).values(**values))
@@ -180,21 +173,23 @@ async def change_password(
     user_id: int,
     payload: UserUpdate,
     session: AsyncSession = Depends(get_session),
-    current: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    if current.role != UserRole.MANAGER and current.id != user_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    if current_user.role != UserRole.MANAGER and current_user.id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Không có quyền thực hiện hành động này"
+        )
 
     if payload.password is None:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Password is required"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Mật khẩu là bắt buộc"
         )
 
     res = await session.execute(select(User).where(User.id == user_id))
     user = res.scalar_one_or_none()
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy thông tin người dùng"
         )
 
     await session.execute(
@@ -203,7 +198,7 @@ async def change_password(
         .values(
             password_hash=get_password_hash(payload.password),
             updated_at=datetime.now(),
-            updated_by=current.id,
+            updated_by=current_user.id,
         )
     )
     await session.commit()
@@ -220,13 +215,13 @@ async def delete_user(
 
     if current.id == user_id:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete yourself"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Không thể xóa chính mình"
         )
 
     res = await session.execute(select(User.id).where(User.id == user_id))
     if not res.scalar_one_or_none():
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy thông tin người dùng"
         )
 
     await session.execute(delete(User).where(User.id == user_id))

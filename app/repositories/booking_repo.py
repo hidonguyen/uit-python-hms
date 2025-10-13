@@ -1,13 +1,14 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, or_
-from sqlalchemy.orm import selectinload
-from typing import Optional, List, Dict, Any
 from datetime import datetime, date
+from typing import Any, Dict, List, Optional
 
-from app.models.payment import Payment
+from fastapi import HTTPException, status
+from sqlalchemy import and_, func, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.payment import Payment, PaymentMethod
 from app.models.user import User
 from app.schemas.booking import BookingHistoryOut, TodayBookingOut
-from ..models.booking import Booking, BookingStatus
+from ..models.booking import Booking, BookingStatus, PaymentStatus
 from ..models.booking_detail import BookingDetail, BookingDetailType
 from ..models.guest import Guest
 from ..models.room import Room
@@ -171,8 +172,11 @@ class BookingRepository:
                 Booking.charge_type,
                 Booking.checkin,
                 Booking.checkout,
+                Booking.room_id,
                 Room.name.label("room_name"),
+                Booking.room_type_id,
                 RoomType.name.label("room_type_name"),
+                Booking.primary_guest_id,
                 Guest.name.label("primary_guest_name"),
                 Guest.phone.label("primary_guest_phone"),
                 Booking.num_adults,
@@ -373,18 +377,55 @@ class BookingRepository:
 
     async def get(self, booking_id: int) -> Optional[Booking]:
         """Lấy booking theo ID."""
-        result = await self.session.execute(
-            select(Booking)
-            .options(
-                selectinload(Booking.room),
-                selectinload(Booking.room_type),
-                selectinload(Booking.primary_guest),
-                selectinload(Booking.booking_details),
-                selectinload(Booking.payments)
+
+        bd_subq = (
+            select(
+                BookingDetail.booking_id.label("booking_id"),
+                func.coalesce(func.sum(BookingDetail.amount), 0).label("total_amount"),
             )
+            .group_by(BookingDetail.booking_id)
+            .subquery()
+        )
+
+        pm_subq = (
+            select(
+                Payment.booking_id.label("booking_id"),
+                func.coalesce(func.sum(Payment.amount), 0).label("paid_amount"),
+            )
+            .group_by(Payment.booking_id)
+            .subquery()
+        )
+
+        query = (
+            select(
+                Booking.id,
+                Booking.booking_no,
+                Booking.charge_type,
+                Booking.checkin,
+                Booking.checkout,
+                Booking.room_id,
+                Booking.room_type_id,
+                Booking.primary_guest_id,
+                Booking.num_adults,
+                Booking.num_children,
+                Booking.status,
+                Booking.payment_status,
+                func.coalesce(bd_subq.c.total_amount, 0).label("total_amount"),
+                func.coalesce(pm_subq.c.paid_amount, 0).label("paid_amount"),
+                (func.coalesce(bd_subq.c.total_amount, 0) - func.coalesce(pm_subq.c.paid_amount, 0)).label("balance"),
+                Booking.notes,
+                Booking.created_at,
+                Booking.created_by,
+                Booking.updated_at,
+                Booking.updated_by
+            )
+            .select_from(Booking)
+            .outerjoin(bd_subq, bd_subq.c.booking_id == Booking.id)
+            .outerjoin(pm_subq, pm_subq.c.booking_id == Booking.id)
             .where(Booking.id == booking_id)
         )
-        return result.scalar_one_or_none()
+        result = await self.session.execute(query)
+        return result.first()
     
     async def get_by_booking_no(self, booking_no: str) -> Optional[Booking]:
         """Lấy booking theo mã booking."""
@@ -411,7 +452,7 @@ class BookingRepository:
 
     async def update(self, booking_id: int, booking_data: Dict[str, Any], current_user: User) -> Optional[Booking]:
         """Cập nhật booking."""
-        booking = await self.get(booking_id)
+        booking = await self.session.get(Booking, booking_id)
         if not booking:
             return None
         
@@ -425,10 +466,87 @@ class BookingRepository:
         await self.session.commit()
         await self.session.refresh(booking)
         return booking
+
+    async def checkin(self, booking_id: int, current_user: User) -> Optional[Booking]:
+        booking = await self.session.get(Booking, booking_id)
+        if not booking:
+            return None
+        
+        if booking.status == BookingStatus.CHECKED_IN:
+            return booking
+
+        booking.status = BookingStatus.CHECKED_IN
+        booking.checkin = datetime.now()
+
+        booking.updated_by = current_user.id
+        booking.updated_at = datetime.now()
+
+        await self.session.commit()
+        await self.session.refresh(booking)
+        return booking
+
+    async def checkout(self, booking_id: int, current_user: User) -> Optional[Booking]:
+        booking = await self.session.get(Booking, booking_id)
+        if not booking:
+            return None
+        
+        if booking.status != BookingStatus.CHECKED_IN:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Chỉ có thể trả phòng khi trạng thái là 'Đã nhận phòng'"
+            )
+
+        try:
+            booking.status = BookingStatus.CHECKED_OUT
+            booking.checkout = datetime.now()
+
+            # Tính số tiền còn lại phải thanh toán
+            total_amount = await self.session.execute(
+                select(func.coalesce(func.sum(BookingDetail.amount), 0))
+                .where(BookingDetail.booking_id == booking_id)
+            )
+            total_amount = total_amount.scalar() or 0
+
+            paid_amount = await self.session.execute(
+                select(func.coalesce(func.sum(Payment.amount), 0))
+                .where(Payment.booking_id == booking_id)
+            )
+            paid_amount = paid_amount.scalar() or 0
+
+            remaining_amount = total_amount - paid_amount
+
+            if remaining_amount > 0:
+                # Tự động tạo payment để thanh toán số tiền còn lại
+                payment = Payment(
+                    booking_id=booking_id,
+                    paid_at=datetime.now(),
+                    payment_method=PaymentMethod.OTHER,
+                    reference_no=booking.booking_no,
+                    amount=remaining_amount,
+                    payer_name="System",
+                    notes="Auto-generated payment on checkout",
+                    created_by=current_user.id,
+                    created_at=datetime.now()
+                )
+                self.session.add(payment)
+                await self.session.flush()  # Đảm bảo payment được thêm vào session
+
+            booking.payment_status = PaymentStatus.PAID
+
+            booking.updated_by = current_user.id
+            booking.updated_at = datetime.now()
+
+            await self.session.commit()
+            await self.session.refresh(booking)
+        
+        except Exception as e:
+            await self.session.rollback()
+            raise e
+        
+        return self.get(booking_id)
     
     async def delete(self, booking_id: int) -> bool:
         """Xóa booking (kiểm tra ràng buộc toàn vẹn)."""
-        booking = await self.get(booking_id)
+        booking = await self.session.get(Booking, booking_id)
         if not booking:
             return False
         
@@ -437,7 +555,7 @@ class BookingRepository:
             select(func.count(Payment.id)).where(Payment.booking_id == booking_id)
         )
         if payments_count.scalar() > 0:
-            raise ValueError("Không thể xóa booking vì vẫn còn payment đang sử dụng")
+            raise ValueError("Không thể xóa thông tin đặt phòng vì đã có thanh toán liên quan")
         
         await self.session.delete(booking)
         await self.session.commit()

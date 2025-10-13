@@ -91,7 +91,7 @@ async def create_room_type(
         )
 
     # Tạo loại phòng mới
-    room_type_dict = room_type_data.model_dump()
+    room_type_dict = room_type_data.model_dump(exclude_unset=True)
     room_type_dict["created_by"] = current_user.id
 
     room_type = await room_type_repo.create(room_type_dict)
@@ -159,4 +159,6 @@ async def delete_room_type(
                 detail="Không thể xóa loại phòng",
             )
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
+        )

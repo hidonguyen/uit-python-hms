@@ -1,7 +1,10 @@
+from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_
 from sqlalchemy.orm import selectinload
 from typing import Optional, List, Dict, Any
+
+from app.models.user import User
 from ..models.guest import Guest, Gender
 
 class GuestRepository:
@@ -39,52 +42,6 @@ class GuestRepository:
         result = await self.session.execute(query)
         return list(result.scalars().all())
     
-    async def get(self, guest_id: int) -> Optional[Guest]:
-        """Lấy khách hàng theo ID."""
-        result = await self.session.execute(
-            select(Guest).where(Guest.id == guest_id)
-        )
-        return result.scalar_one_or_none()
-    
-    async def create(self, guest_data: Dict[str, Any]) -> Guest:
-        """Tạo khách hàng mới."""
-        guest = Guest(**guest_data)
-        self.session.add(guest)
-        await self.session.commit()
-        await self.session.refresh(guest)
-        return guest
-    
-    async def update(self, guest_id: int, guest_data: Dict[str, Any]) -> Optional[Guest]:
-        """Cập nhật khách hàng."""
-        guest = await self.get(guest_id)
-        if not guest:
-            return None
-        
-        for field, value in guest_data.items():
-            if hasattr(guest, field) and value is not None:
-                setattr(guest, field, value)
-        
-        await self.session.commit()
-        await self.session.refresh(guest)
-        return guest
-    
-    async def delete(self, guest_id: int) -> bool:
-        """Xóa khách hàng (kiểm tra ràng buộc toàn vẹn)."""
-        guest = await self.get(guest_id)
-        if not guest:
-            return False
-        
-        from ..models.booking import Booking
-        bookings_count = await self.session.execute(
-            select(func.count(Booking.id)).where(Booking.primary_guest_id == guest_id)
-        )
-        if bookings_count.scalar() > 0:
-            raise ValueError("Không thể xóa khách hàng vì vẫn còn booking đang sử dụng")
-        
-        await self.session.delete(guest)
-        await self.session.commit()
-        return True
-    
     async def count(self, filters: Optional[Dict[str, Any]] = None) -> int:
         """Đếm tổng số khách hàng với bộ lọc."""
         query = select(func.count(Guest.id))
@@ -107,3 +64,70 @@ class GuestRepository:
         
         result = await self.session.execute(query)
         return result.scalar() or 0
+    
+    async def get(self, guest_id: int) -> Optional[Guest]:
+        """Lấy khách hàng theo ID."""
+        result = await self.session.execute(
+            select(Guest).where(Guest.id == guest_id)
+        )
+        return result.scalar_one_or_none()
+    
+    async def get_by_phone(self, phone: str) -> Optional[Guest]:
+        """Lấy khách hàng theo số điện thoại."""
+        result = await self.session.execute(
+            select(Guest).where(Guest.phone == phone)
+        )
+        return result.scalar_one_or_none()
+    
+    async def get_by_email(self, email: str) -> Optional[Guest]:
+        """Lấy khách hàng theo email."""
+        result = await self.session.execute(
+            select(Guest).where(Guest.email == email)
+        )
+        return result.scalar_one_or_none()
+    
+    async def create(self, guest_data: Dict[str, Any], current_user: User) -> Guest:
+        """Tạo khách hàng mới."""
+        guest = Guest(**guest_data)
+
+        guest.created_by = current_user.id
+        guest.created_at = datetime.now()
+
+        self.session.add(guest)
+        await self.session.commit()
+        await self.session.refresh(guest)
+        return guest
+    
+    async def update(self, guest_id: int, guest_data: Dict[str, Any], current_user: User) -> Optional[Guest]:
+        """Cập nhật khách hàng."""
+        guest = await self.get(guest_id)
+        if not guest:
+            return None
+        
+        for field, value in guest_data.items():
+            if hasattr(guest, field) and value is not None:
+                setattr(guest, field, value)
+
+        guest.updated_by = current_user.id
+        guest.updated_at = datetime.now()
+
+        await self.session.commit()
+        await self.session.refresh(guest)
+        return guest
+    
+    async def delete(self, guest_id: int) -> bool:
+        """Xóa khách hàng (kiểm tra ràng buộc toàn vẹn)."""
+        guest = await self.get(guest_id)
+        if not guest:
+            return False
+        
+        from ..models.booking import Booking
+        bookings_count = await self.session.execute(
+            select(func.count(Booking.id)).where(Booking.primary_guest_id == guest_id)
+        )
+        if bookings_count.scalar() > 0:
+            raise ValueError("Không thể xóa thông tin khách hàng vì đã có booking liên quan")
+        
+        await self.session.delete(guest)
+        await self.session.commit()
+        return True

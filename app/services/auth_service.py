@@ -40,7 +40,7 @@ def verify_token(token: str) -> dict:
     except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
+            detail="Không thể xác thực thông tin đăng nhập",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -51,7 +51,9 @@ def check_user_permissions(user: User, required_roles: list[UserRole]) -> bool:
 def require_role(required_roles: List[UserRole]):
     async def role_checker(current_user: User = Depends(get_current_user)) -> User:
         if not check_user_permissions(current_user, required_roles):
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Không có quyền thực hiện hành động này"
+            )
         return current_user
 
     return role_checker
@@ -78,7 +80,7 @@ async def get_current_user(
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Không tìm thấy người dùng",
+            detail="Không tìm thấy thông tin người dùng",
             headers={"WWW-Authenticate": "Bearer"},
         )
 

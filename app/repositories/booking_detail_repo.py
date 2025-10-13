@@ -49,6 +49,35 @@ class BookingDetailRepository:
         result = await self.session.execute(query)
         return list(result.scalars().all())
 
+    async def count(self, filters: Optional[Dict[str, Any]] = None) -> int:
+        """Đếm tổng số booking detail với bộ lọc."""
+        query = select(func.count(BookingDetail.id))
+
+        if filters:
+            conditions = []
+            if "booking_id" in filters and filters["booking_id"] is not None:
+                conditions.append(BookingDetail.booking_id == filters["booking_id"])
+            if "type" in filters and filters["type"]:
+                conditions.append(BookingDetail.type == filters["type"])
+            if "service_id" in filters and filters["service_id"] is not None:
+                conditions.append(BookingDetail.service_id == filters["service_id"])
+
+            if conditions:
+                query = query.where(and_(*conditions))
+
+        result = await self.session.execute(query)
+        return result.scalar() or 0
+
+    async def get_by_booking_id(self, booking_id: int) -> List[BookingDetail]:
+        """Lấy danh sách booking detail theo booking ID."""
+        result = await self.session.execute(
+            select(BookingDetail)
+            .options(selectinload(BookingDetail.service))
+            .where(BookingDetail.booking_id == booking_id)
+            .order_by(BookingDetail.issued_at.desc())
+        )
+        return list(result.scalars().all())
+
     async def get(self, booking_detail_id: int) -> Optional[BookingDetail]:
         """Lấy booking detail theo ID."""
         result = await self.session.execute(
@@ -101,35 +130,6 @@ class BookingDetailRepository:
         await self.session.delete(booking_detail)
         await self.session.commit()
         return True
-
-    async def count(self, filters: Optional[Dict[str, Any]] = None) -> int:
-        """Đếm tổng số booking detail với bộ lọc."""
-        query = select(func.count(BookingDetail.id))
-
-        if filters:
-            conditions = []
-            if "booking_id" in filters and filters["booking_id"] is not None:
-                conditions.append(BookingDetail.booking_id == filters["booking_id"])
-            if "type" in filters and filters["type"]:
-                conditions.append(BookingDetail.type == filters["type"])
-            if "service_id" in filters and filters["service_id"] is not None:
-                conditions.append(BookingDetail.service_id == filters["service_id"])
-
-            if conditions:
-                query = query.where(and_(*conditions))
-
-        result = await self.session.execute(query)
-        return result.scalar() or 0
-
-    async def get_by_booking_id(self, booking_id: int) -> List[BookingDetail]:
-        """Lấy danh sách booking detail theo booking ID."""
-        result = await self.session.execute(
-            select(BookingDetail)
-            .options(selectinload(BookingDetail.service))
-            .where(BookingDetail.booking_id == booking_id)
-            .order_by(BookingDetail.issued_at.desc())
-        )
-        return list(result.scalars().all())
 
     async def get_room_charges(self, booking_id: int) -> List[BookingDetail]:
         """Lấy danh sách phí phòng cho booking."""

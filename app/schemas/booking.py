@@ -97,6 +97,9 @@ class BookingUpdate(BaseModel):
 class BookingOut(BookingBase):
     id: int
     booking_no: str = Field(..., min_length=1, max_length=50)
+    total_amount: Decimal = Field(default=0, ge=0)
+    paid_amount: Decimal = Field(default=0, ge=0)
+    balance: Decimal = Field(default=0)
     created_at: datetime
     updated_at: Optional[datetime] = None
 

@@ -1,6 +1,8 @@
 # app/main.py
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+import traceback
 
 from .config import settings
 from .db import create_tables, seed_initial_data
@@ -10,7 +12,24 @@ from .routers import users, room_types, rooms, services, guests, bookings
 
 logging.basicConfig(level=logging.INFO)
 
-app = FastAPI(title=settings.app_name, debug=True)
+app = FastAPI(title=settings.app_name, debug=settings.app_debug)
+
+
+@app.middleware("http")
+async def catch_exceptions_middleware(request: Request, call_next):
+    try:
+        response = await call_next(request)
+        return response
+    except Exception as exc:
+        # Log full traceback
+        tb = traceback.format_exc()
+        logging.exception("Unhandled exception in request: %s", exc)
+
+        error_payload = {"detail": str(exc)}
+        if settings.app_debug:
+            error_payload["traceback"] = tb
+
+        return JSONResponse(status_code=500, content=error_payload)
 
 @app.on_event("startup")
 async def on_startup():

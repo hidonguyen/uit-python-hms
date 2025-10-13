@@ -40,9 +40,6 @@ async def seed_initial_data() -> None:
             )
             session.add(admin_user)
             await session.commit()
-            print("Created initial admin user.")
-        else:
-            print("Admin user already exists.")
 
         
         result = await session.execute(
@@ -58,9 +55,6 @@ async def seed_initial_data() -> None:
             )
             session.add(receptionist_user)
             await session.commit()
-            print("Created initial receptionist user.")
-        else:
-            print("Receptionist user already exists.")
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:

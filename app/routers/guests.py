@@ -4,10 +4,13 @@ from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.user import User
+
 from ..db import get_session
 from ..models.guest import Gender
 from ..repositories.guest_repo import GuestRepository
 from ..schemas.guest import GuestCreate, GuestUpdate, GuestOut, PagedGuestOut
+from app.services.auth_service import require_manager, require_receptionist
 
 router = APIRouter()
 
@@ -26,6 +29,7 @@ async def list_guests(
     gender: Optional[Gender] = None,
     nationality: Optional[str] = None,
     repo: GuestRepository = Depends(get_repo),
+    _: User = Depends(require_receptionist)
 ):
     filters: Dict[str, Any] = {
         "name": name,
@@ -40,28 +44,30 @@ async def list_guests(
 
 
 @router.get("/{guest_id}", response_model=GuestOut)
-async def get_guest(guest_id: int, repo: GuestRepository = Depends(get_repo)):
+async def get_guest(guest_id: int, repo: GuestRepository = Depends(get_repo),
+    _: User = Depends(require_receptionist)):
     guest = await repo.get(guest_id)
     if not guest:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Guest not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy thông tin khách hàng"
         )
     return guest
 
 
 @router.post("", response_model=GuestOut, status_code=status.HTTP_201_CREATED)
-async def create_guest(payload: GuestCreate, repo: GuestRepository = Depends(get_repo)):
+async def create_guest(payload: GuestCreate, repo: GuestRepository = Depends(get_repo),
+    current_user: User = Depends(require_receptionist)):
     if payload.phone:
         existed_phone = await repo.get_by_phone(payload.phone)
         if existed_phone:
             raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT, detail="Phone already exists"
+                status_code=status.HTTP_409_CONFLICT, detail="Số điện thoại đã tồn tại"
             )
     if payload.email:
         existed_email = await repo.get_by_email(payload.email)
         if existed_email:
             raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT, detail="Email already exists"
+                status_code=status.HTTP_409_CONFLICT, detail="Email đã tồn tại"
             )
     guest = await repo.create(payload.model_dump(exclude_unset=True))
     return guest
@@ -69,37 +75,41 @@ async def create_guest(payload: GuestCreate, repo: GuestRepository = Depends(get
 
 @router.put("/{guest_id}", response_model=GuestOut)
 async def update_guest(
-    guest_id: int, payload: GuestUpdate, repo: GuestRepository = Depends(get_repo)
+    guest_id: int, payload: GuestUpdate, repo: GuestRepository = Depends(get_repo),
+    current_user: User = Depends(require_receptionist)
 ):
     data = payload.model_dump(exclude_unset=True)
     if "phone" in data:
         existed = await repo.get_by_phone(data["phone"])
         if existed and existed.id != guest_id:
             raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT, detail="Phone already exists"
+                status_code=status.HTTP_409_CONFLICT, detail="Số điện thoại đã tồn tại"
             )
     if "email" in data:
         existed = await repo.get_by_email(data["email"])
         if existed and existed.id != guest_id:
             raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT, detail="Email already exists"
+                status_code=status.HTTP_409_CONFLICT, detail="Email đã tồn tại"
             )
     updated = await repo.update(guest_id, data)
     if not updated:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Guest not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy thông tin khách hàng"
         )
     return updated
 
 
 @router.delete("/{guest_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_guest(guest_id: int, repo: GuestRepository = Depends(get_repo)):
+async def delete_guest(guest_id: int, repo: GuestRepository = Depends(get_repo),
+    _: User = Depends(require_manager)):
     try:
         ok = await repo.delete(guest_id)
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
+        )
     if not ok:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Guest not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy thông tin khách hàng"
         )
     return None

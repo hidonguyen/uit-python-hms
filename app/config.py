@@ -8,6 +8,7 @@ load_dotenv()
 class Settings(BaseModel):
     app_name: str = os.getenv("APP_NAME", "My FastAPI Service")
     app_env: str = os.getenv("APP_ENV", "local")
+    app_debug: bool = os.getenv("APP_DEBUG", "true").lower() in ("true", "1", "t")
 
     postgres_host: str = os.getenv("POSTGRES_HOST", "localhost")
     postgres_port: int = int(os.getenv("POSTGRES_PORT", "5432"))

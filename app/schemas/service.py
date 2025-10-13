@@ -20,9 +20,12 @@ class ServiceCreate(ServiceBase):
 class ServiceUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=200)
     unit: Optional[str] = Field(None, min_length=1, max_length=50)
-    price: Optional[Decimal] = Field(None, ge=0)
     description: Optional[str] = None
     status: Optional[ServiceStatus] = None
+
+
+class ServiceChangePrice(BaseModel):
+    price: Decimal = Field(..., ge=0)
 
 
 class ServiceOut(ServiceBase):

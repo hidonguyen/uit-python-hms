@@ -3,6 +3,8 @@ from sqlalchemy import select, func, and_, or_
 from sqlalchemy.orm import selectinload
 from typing import Optional, List, Dict, Any
 from datetime import datetime
+
+from app.models.user import User
 from ..models.payment import Payment, PaymentMethod
 
 class PaymentRepository:
@@ -50,48 +52,6 @@ class PaymentRepository:
         result = await self.session.execute(query)
         return list(result.scalars().all())
     
-    async def get(self, payment_id: int) -> Optional[Payment]:
-        """Lấy payment theo ID."""
-        result = await self.session.execute(
-            select(Payment)
-            .options(selectinload(Payment.booking))
-            .where(Payment.id == payment_id)
-        )
-        return result.scalar_one_or_none()
-    
-    async def create(self, payment_data: Dict[str, Any]) -> Payment:
-        """Tạo payment mới."""
-        payment = Payment(**payment_data)
-        self.session.add(payment)
-        await self.session.commit()
-        await self.session.refresh(payment)
-        return payment
-    
-    async def update(self, payment_id: int, payment_data: Dict[str, Any]) -> Optional[Payment]:
-        """Cập nhật payment."""
-        payment = await self.get(payment_id)
-        if not payment:
-            return None
-        
-        # Cập nhật các trường
-        for field, value in payment_data.items():
-            if hasattr(payment, field) and value is not None:
-                setattr(payment, field, value)
-        
-        await self.session.commit()
-        await self.session.refresh(payment)
-        return payment
-    
-    async def delete(self, payment_id: int) -> bool:
-        """Xóa payment."""
-        payment = await self.get(payment_id)
-        if not payment:
-            return False
-        
-        await self.session.delete(payment)
-        await self.session.commit()
-        return True
-    
     async def count(self, filters: Optional[Dict[str, Any]] = None) -> int:
         """Đếm tổng số payment với bộ lọc."""
         query = select(func.count(Payment.id))
@@ -112,3 +72,61 @@ class PaymentRepository:
         
         result = await self.session.execute(query)
         return result.scalar() or 0
+
+    async def get_by_booking_id(self, booking_id: int) -> List[Payment]:
+        """Lấy danh sách payment theo booking ID."""
+        result = await self.session.execute(
+            select(Payment)
+            .where(Payment.booking_id == booking_id)
+            .order_by(Payment.paid_at.desc())
+        )
+        return list(result.scalars().all())
+    
+    async def get(self, payment_id: int) -> Optional[Payment]:
+        """Lấy payment theo ID."""
+        result = await self.session.execute(
+            select(Payment)
+            .options(selectinload(Payment.booking))
+            .where(Payment.id == payment_id)
+        )
+        return result.scalar_one_or_none()
+    
+    async def create(self, payment_data: Dict[str, Any], current_user: User) -> Payment:
+        """Tạo payment mới."""
+        payment = Payment(**payment_data)
+
+        payment.created_by = current_user.id
+        payment.created_at = datetime.now()
+
+        self.session.add(payment)
+        await self.session.commit()
+        await self.session.refresh(payment)
+        return payment
+    
+    async def update(self, payment_id: int, payment_data: Dict[str, Any], current_user: User) -> Optional[Payment]:
+        """Cập nhật payment."""
+        payment = await self.get(payment_id)
+        if not payment:
+            return None
+        
+        # Cập nhật các trường
+        for field, value in payment_data.items():
+            if hasattr(payment, field) and value is not None:
+                setattr(payment, field, value)
+
+        payment.updated_by = current_user.id
+        payment.updated_at = datetime.now()
+
+        await self.session.commit()
+        await self.session.refresh(payment)
+        return payment
+    
+    async def delete(self, payment_id: int) -> bool:
+        """Xóa payment."""
+        payment = await self.get(payment_id)
+        if not payment:
+            return False
+        
+        await self.session.delete(payment)
+        await self.session.commit()
+        return True
