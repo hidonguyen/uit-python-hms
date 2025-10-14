@@ -16,6 +16,7 @@ cp .env.example .env
 
 ## 2) Chuẩn bị PostgreSQL
 Tải và cài đặt PostgreSQL, tạo mới database tên `hms`
+Schema và seed data sẽ được tạo khi chạy chương trình
 
 ## 3) Tạo & kích hoạt virtualenv, cài đặt dependencies
 Windows
