@@ -7,8 +7,8 @@ import enum
 class HousekeepingStatus(str, enum.Enum):
     CLEAN = "Clean"
     DIRTY = "Dirty"
+    CLEANING = "Cleaning"
     INSPECTED = "Inspected"
-    OUT_OF_ORDER = "OutOfOrder"
 
 
 class RoomStatus(str, enum.Enum):

@@ -9,6 +9,12 @@ class Gender(str, enum.Enum):
     FEMALE = "Female"
     OTHER = "Other"
 
+class DocumentType(str, enum.Enum):
+    PASSPORT = "Passport"
+    ID_CARD = "ID Card"
+    DRIVER_LICENSE = "Driver License"
+    OTHER = "Other"
+
 
 class Guest(Base):
     __tablename__ = "guests"
@@ -17,6 +23,11 @@ class Guest(Base):
     gender = mapped_column(Enum(Gender, name="Gender", native_enum=False, length=50, validate_strings=True), nullable=True)
     date_of_birth = mapped_column(Date, nullable=True)
     nationality = mapped_column(String(100), nullable=True)
+    document_type = mapped_column(Enum(DocumentType, name="DocumentType", native_enum=False, length=50, validate_strings=True), nullable=True)
+    document_no = mapped_column(String(100), nullable=True)
+    document_issue_date = mapped_column(Date, nullable=True)
+    document_expiry_date = mapped_column(Date, nullable=True)
+    document_issue_place = mapped_column(String(500), nullable=True)
     phone = mapped_column(String(50), nullable=True)
     email = mapped_column(String(255), nullable=True)
     address = mapped_column(Text, nullable=True)

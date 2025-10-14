@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 from decimal import Decimal
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
 class RoomTypeBase(BaseModel):
     code: str = Field(..., min_length=1, max_length=50)
@@ -34,3 +34,10 @@ class RoomTypeOut(RoomTypeBase):
     updated_at: Optional[datetime] = None
     
     model_config = {"from_attributes": True}
+
+
+class PagedRoomTypeOut(BaseModel):
+    total: int
+    skip: int
+    limit: int
+    items: List[RoomTypeOut]

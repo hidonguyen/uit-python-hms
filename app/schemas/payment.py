@@ -30,3 +30,7 @@ class PaymentOut(PaymentBase):
     updated_at: Optional[datetime] = None
     
     model_config = {"from_attributes": True}
+
+class PaymentMethodItem(BaseModel):
+    value: str
+    text: str

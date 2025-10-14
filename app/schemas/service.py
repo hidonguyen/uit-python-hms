@@ -41,3 +41,7 @@ class PagedServiceOut(BaseModel):
     skip: int
     limit: int
     items: List[ServiceOut]
+
+class ServiceStatusItem(BaseModel):
+    value: str
+    text: str

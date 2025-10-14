@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.booking import BookingStatus, ChargeType, PaymentStatus
+from app.models.booking_detail import BookingDetailType
 from app.models.user import User
 from app.repositories.booking_detail_repo import BookingDetailRepository
 from app.repositories.guest_repo import GuestRepository
@@ -13,7 +14,7 @@ from app.repositories.payment_repo import PaymentRepository
 from app.repositories.room_repo import RoomRepository
 from app.repositories.room_type_repo import RoomTypeRepository
 from app.repositories.service_repo import ServiceRepository
-from app.schemas.booking_detail import BookingDetailCreate, BookingDetailOut
+from app.schemas.booking_detail import BookingDetailCreate, BookingDetailOut, BookingDetailTypeItem
 from app.schemas.payment import PaymentCreate, PaymentOut
 from app.services.auth_service import require_manager, require_receptionist
 
@@ -22,9 +23,12 @@ from ..repositories.booking_repo import BookingRepository
 from ..schemas.booking import (
     BookingCreate,
     BookingOut,
+    BookingStatusItem,
     BookingUpdate,
+    ChargeTypeItem,
     PagedBookingHistoryOut,
     PagedTodayBookingOut,
+    PaymentStatusItem,
 )
 
 router = APIRouter()
@@ -532,3 +536,37 @@ async def delete_booking(
             status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy thông tin đặt phòng"
         )
     return None
+
+@router.get("/enum/booking-statuses", response_model=List[BookingStatusItem])
+async def get_booking_statuses(_: User = Depends(require_receptionist)):
+    return [
+        BookingStatusItem(value=BookingStatus.RESERVED.value, text="Đã đặt"),
+        BookingStatusItem(value=BookingStatus.CHECKED_IN.value, text="Đã nhận phòng"),
+        BookingStatusItem(value=BookingStatus.CHECKED_OUT.value, text="Đã trả phòng"),
+        BookingStatusItem(value=BookingStatus.CANCELLED.value, text="Đã hủy"),
+        BookingStatusItem(value=BookingStatus.NO_SHOW.value, text="Không đến"),
+    ]
+
+@router.get("/enum/payment-statuses", response_model=List[PaymentStatusItem])
+async def get_payment_statuses(_: User = Depends(require_receptionist)):
+    return [
+        PaymentStatusItem(value=PaymentStatus.PAID.value, text="Đã thanh toán"),
+        PaymentStatusItem(value=PaymentStatus.PARTIAL.value, text="Thanh toán một phần"),
+        PaymentStatusItem(value=PaymentStatus.UNPAID.value, text="Chưa thanh toán"),
+    ]
+
+@router.get("/enum/charge-types", response_model=List[ChargeTypeItem])
+async def get_charge_types(_: User = Depends(require_receptionist)):
+    return [
+        ChargeTypeItem(value=ChargeType.HOUR.value, text="Theo giờ"),
+        ChargeTypeItem(value=ChargeType.NIGHT.value, text="Qua đêm"),
+    ]
+
+@router.get("/enum/booking-detail-types", response_model=List[BookingDetailTypeItem])
+async def get_booking_detail_types(_: User = Depends(require_receptionist)):
+    return [
+        BookingDetailTypeItem(value=BookingDetailType.ROOM.value, text="Phòng"),
+        BookingDetailTypeItem(value=BookingDetailType.SERVICE.value, text="Dịch vụ"),
+        BookingDetailTypeItem(value=BookingDetailType.FEE.value, text="Phí"),
+        BookingDetailTypeItem(value=BookingDetailType.ADJUSTMENT.value, text="Điều chỉnh"),
+    ]

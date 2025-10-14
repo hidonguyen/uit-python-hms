@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
 from ..db import get_session
-from ..schemas.user import UserCreate, UserOut, UserUpdate, UserLogin, Token
+from ..schemas.user import UserCreate, UserOut, UserRoleItem, UserUpdate, UserLogin, Token
 from ..models.user import User, UserRole, UserStatus
 from ..services.auth_service import (
     create_access_token,
@@ -90,7 +90,7 @@ async def get_user(
     _: User = Depends(require_manager)
 ):
     res = await session.execute(select(User).where(User.id == user_id))
-    user = res.scalar_one_or_none()
+    user = res.first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy thông tin người dùng"
@@ -107,7 +107,7 @@ async def create_user(
     existed = await session.execute(
         select(User.id).where(User.username == payload.username)
     )
-    if existed.scalar_one_or_none():
+    if existed.first():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Tên người dùng đã tồn tại"
         )
@@ -133,7 +133,7 @@ async def update_user(
     current_user: User = Depends(require_manager)
 ):
     res = await session.execute(select(User).where(User.id == user_id))
-    user = res.scalar_one_or_none()
+    user = res.first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy thông tin người dùng"
@@ -143,7 +143,7 @@ async def update_user(
         chk = await session.execute(
             select(User.id).where(User.username == payload.username)
         )
-        if chk.scalar_one_or_none():
+        if chk.first():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, detail="Tên người dùng đã tồn tại"
             )
@@ -186,7 +186,7 @@ async def change_password(
         )
 
     res = await session.execute(select(User).where(User.id == user_id))
-    user = res.scalar_one_or_none()
+    user = res.first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy thông tin người dùng"
@@ -219,7 +219,7 @@ async def delete_user(
         )
 
     res = await session.execute(select(User.id).where(User.id == user_id))
-    if not res.scalar_one_or_none():
+    if not res.first():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy thông tin người dùng"
         )
@@ -227,3 +227,18 @@ async def delete_user(
     await session.execute(delete(User).where(User.id == user_id))
     await session.commit()
     return
+
+
+@router.get("/enum/user-roles", response_model=List[UserRoleItem])
+async def get_user_roles(_: User = Depends(require_manager)):
+    return [
+        UserRoleItem(value=UserRole.MANAGER.value, label="Quản lý"),
+        UserRoleItem(value=UserRole.RECEPTIONIST.value, label="Lễ tân"),
+    ]
+
+@router.get("/enum/user-statuses", response_model=List[UserRoleItem])
+async def get_user_statuses(_: User = Depends(require_manager)):
+    return [
+        UserRoleItem(value=UserStatus.ACTIVE.value, label="Hoạt động"),
+        UserRoleItem(value=UserStatus.LOCKED.value, label="Đã khóa"),
+    ]

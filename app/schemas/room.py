@@ -1,3 +1,4 @@
+from decimal import Decimal
 from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import List, Optional
@@ -39,9 +40,32 @@ class PagedRoomOut(BaseModel):
     items: List[RoomOut]
 
 
+class AvailableRoomOut(RoomBase):
+    id: int
+    room_type: str
+    base_occupancy: int
+    max_occupancy: int
+    base_rate: Decimal
+    hour_rate: Decimal
+    extra_adult_fee: Decimal
+    extra_child_fee: Decimal
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
+
+
 class RoomStatusUpdate(BaseModel):
     status: RoomStatus
 
 
 class HousekeepingStatusUpdate(BaseModel):
     housekeeping_status: HousekeepingStatus
+
+class RoomStatusItem(BaseModel):
+    value: str
+    text: str
+
+class HousekeepingStatusItem(BaseModel):
+    value: str
+    text: str

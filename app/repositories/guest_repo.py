@@ -23,6 +23,8 @@ class GuestRepository:
             conditions = []
             if "name" in filters and filters["name"]:
                 conditions.append(Guest.name.ilike(f"%{filters['name']}%"))
+            if "document_no" in filters and filters["document_no"]:
+                conditions.append(Guest.document_no.ilike(f"%{filters['document_no']}%"))
             if "phone" in filters and filters["phone"]:
                 conditions.append(Guest.phone.ilike(f"%{filters['phone']}%"))
             if "email" in filters and filters["email"]:
@@ -48,6 +50,8 @@ class GuestRepository:
             conditions = []
             if "name" in filters and filters["name"]:
                 conditions.append(Guest.name.ilike(f"%{filters['name']}%"))
+            if "document_no" in filters and filters["document_no"]:
+                conditions.append(Guest.document_no.ilike(f"%{filters['document_no']}%"))
             if "phone" in filters and filters["phone"]:
                 conditions.append(Guest.phone.ilike(f"%{filters['phone']}%"))
             if "email" in filters and filters["email"]:
@@ -67,6 +71,13 @@ class GuestRepository:
         """Lấy khách hàng theo ID."""
         result = await self.session.execute(
             select(Guest).where(Guest.id == guest_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def get_by_document_no(self, document_no: str) -> Optional[Guest]:
+        """Lấy khách hàng theo số giấy tờ."""
+        result = await self.session.execute(
+            select(Guest).where(Guest.document_no == document_no)
         )
         return result.scalar_one_or_none()
     

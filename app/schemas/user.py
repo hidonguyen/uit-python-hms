@@ -1,6 +1,6 @@
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 from ..models.user import UserRole, UserStatus
 
 
@@ -35,7 +35,22 @@ class UserOut(UserBase):
     model_config = {"from_attributes": True}
 
 
+class PagedUserOut(BaseModel):
+    total: int
+    skip: int
+    limit: int
+    items: List[UserOut]
+
+
 class Token(BaseModel):
     access_token: str
     token_type: str
     expires_in: int
+
+class UserStatusItem(BaseModel):
+    value: str
+    text: str
+
+class UserRoleItem(BaseModel):
+    value: str
+    text: str

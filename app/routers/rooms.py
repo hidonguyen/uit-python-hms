@@ -1,5 +1,6 @@
 # app/routers/rooms.py
 from datetime import datetime
+from decimal import Decimal
 from typing import List, Optional, Dict, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -11,7 +12,9 @@ from ..db import get_session
 from ..models.room import RoomStatus, HousekeepingStatus
 from ..repositories.room_repo import RoomRepository
 from ..schemas.room import (
+    AvailableRoomOut,
     RoomCreate,
+    RoomStatusItem,
     RoomUpdate,
     RoomOut,
     PagedRoomOut,
@@ -49,16 +52,20 @@ async def list_rooms(
     return PagedRoomOut(total=total, skip=skip, limit=limit, items=items)
 
 
-@router.get("/available", response_model=List[RoomOut])
+@router.get("/available", response_model=List[AvailableRoomOut])
 async def list_available_rooms(
-    date: Optional[datetime] = None,
-    time: Optional[datetime] = None,
+    from_date: Optional[datetime] = None,
+    to_date: Optional[datetime] = None,
     room_id: Optional[int] = None,
     room_type_id: Optional[int] = None, 
+    occupancy: Optional[int] = None,
+    min_base_rate: Optional[Decimal] = None,
+    max_base_rate: Optional[Decimal] = None,
     repo: RoomRepository = Depends(get_room_repo),
     _: User = Depends(require_receptionist)
 ):
-    return await repo.get_available_rooms(date=date, time=time, room_id=room_id, room_type_id=room_type_id)
+    return await repo.get_available_rooms(from_date=from_date, to_date=to_date, room_id=room_id, room_type_id=room_type_id,
+        occupancy=occupancy, min_base_rate=min_base_rate, max_base_rate=max_base_rate)
 
 
 @router.get("/{room_id}", response_model=RoomOut)
@@ -74,20 +81,20 @@ async def get_room(room_id: int, repo: RoomRepository = Depends(get_room_repo),
 
 @router.post("", response_model=RoomOut, status_code=status.HTTP_201_CREATED)
 async def create_room(payload: RoomCreate, repo: RoomRepository = Depends(get_room_repo),
-    _: User = Depends(require_manager)):
+    current_user: User = Depends(require_manager)):
     existed = await repo.get_by_name(payload.name)
     if existed:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="Tên phòng đã tồn tại"
         )
-    room = await repo.create(payload.model_dump(exclude_unset=True))
+    room = await repo.create(payload.model_dump(exclude_unset=True), current_user)
     return room
 
 
 @router.put("/{room_id}", response_model=RoomOut)
 async def update_room(
     room_id: int, payload: RoomUpdate, repo: RoomRepository = Depends(get_room_repo),
-    _: User = Depends(require_manager)
+    current_user: User = Depends(require_manager)
 ):
     data = payload.model_dump(exclude_unset=True)
     new_name = data.get("name")
@@ -97,7 +104,7 @@ async def update_room(
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT, detail="Tên phòng đã tồn tại"
             )
-    updated = await repo.update(room_id, data)
+    updated = await repo.update(room_id, data, current_user)
     if not updated:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy thông tin phòng"
@@ -124,9 +131,9 @@ async def delete_room(room_id: int, repo: RoomRepository = Depends(get_room_repo
 @router.patch("/{room_id}/status", response_model=RoomOut)
 async def update_room_status(
     room_id: int, payload: RoomStatusUpdate, repo: RoomRepository = Depends(get_room_repo),
-    _: User = Depends(require_receptionist)
+    current_user: User = Depends(require_receptionist)
 ):
-    updated = await repo.update(room_id, {"status": payload.status})
+    updated = await repo.update(room_id, {"status": payload.status}, current_user)
     if not updated:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy thông tin phòng"
@@ -139,11 +146,29 @@ async def update_room_housekeeping(
     room_id: int,
     payload: HousekeepingStatusUpdate,
     repo: RoomRepository = Depends(get_room_repo),
-    _: User = Depends(require_receptionist)
+    current_user: User = Depends(require_receptionist)
 ):
-    updated = await repo.update(room_id, {"housekeeping_status": payload.housekeeping_status})
+    updated = await repo.update(room_id, {"housekeeping_status": payload.housekeeping_status}, current_user)
     if not updated:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy thông tin phòng"
         )
     return updated
+
+
+@router.get("/enum/room-statuses", response_model=List[RoomStatusItem])
+async def get_room_statuses(_: User = Depends(require_receptionist)):
+    return [
+        RoomStatusItem(value=RoomStatus.AVAILABLE.value, label="Trống"),
+        RoomStatusItem(value=RoomStatus.OCCUPIED.value, label="Đang sử dụng"),
+        RoomStatusItem(value=RoomStatus.OUT_OF_SERVICE.value, label="Ngưng phục vụ"),
+    ]
+
+@router.get("/enum/housekeeping-statuses", response_model=List[RoomStatusItem])
+async def get_housekeeping_statuses(_: User = Depends(require_receptionist)):
+    return [
+        RoomStatusItem(value=HousekeepingStatus.CLEAN.value, label="Sạch"),
+        RoomStatusItem(value=HousekeepingStatus.DIRTY.value, label="Bẩn"),
+        RoomStatusItem(value=HousekeepingStatus.CLEANING.value, label="Đang dọn dẹp"),
+        RoomStatusItem(value=HousekeepingStatus.INSPECTED.value, label="Đã kiểm tra"),
+    ]

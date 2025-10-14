@@ -1,6 +1,6 @@
 # app/routers/services.py
 from decimal import Decimal
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,7 +11,7 @@ from app.services.auth_service import require_manager, require_receptionist
 from ..db import get_session
 from ..models.service import ServiceStatus
 from ..repositories.service_repo import ServiceRepository
-from ..schemas.service import PagedServiceOut, ServiceChangePrice, ServiceCreate, ServiceOut, ServiceUpdate
+from ..schemas.service import PagedServiceOut, ServiceChangePrice, ServiceCreate, ServiceOut, ServiceStatusItem, ServiceUpdate
 
 router = APIRouter()
 
@@ -139,3 +139,11 @@ async def delete_service(
         )
     
     return None
+
+
+@router.get("/enum/service-statuses", response_model=List[ServiceStatusItem])
+async def get_service_statuses(_: User = Depends(require_receptionist)):
+    return [
+        ServiceStatusItem(value=ServiceStatus.ACTIVE.value, label="Hoạt động"),
+        ServiceStatusItem(value=ServiceStatus.INACTIVE.value, label="Không hoạt động")
+    ]

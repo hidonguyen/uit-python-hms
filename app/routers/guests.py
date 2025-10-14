@@ -1,5 +1,5 @@
 # app/routers/guests.py
-from typing import Optional, Dict, Any
+from typing import List, Optional, Dict, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,9 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.user import User
 
 from ..db import get_session
-from ..models.guest import Gender
+from ..models.guest import DocumentType, Gender
 from ..repositories.guest_repo import GuestRepository
-from ..schemas.guest import GuestCreate, GuestUpdate, GuestOut, PagedGuestOut
+from ..schemas.guest import DocumentTypeItem, GenderItem, GuestCreate, GuestUpdate, GuestOut, PagedGuestOut
 from app.services.auth_service import require_manager, require_receptionist
 
 router = APIRouter()
@@ -24,6 +24,7 @@ async def list_guests(
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=200),
     name: Optional[str] = None,
+    document_no: Optional[str] = None,
     phone: Optional[str] = None,
     email: Optional[str] = None,
     gender: Optional[Gender] = None,
@@ -33,6 +34,7 @@ async def list_guests(
 ):
     filters: Dict[str, Any] = {
         "name": name,
+        "document_no": document_no,
         "phone": phone,
         "email": email,
         "gender": gender,
@@ -57,6 +59,13 @@ async def get_guest(guest_id: int, repo: GuestRepository = Depends(get_repo),
 @router.post("", response_model=GuestOut, status_code=status.HTTP_201_CREATED)
 async def create_guest(payload: GuestCreate, repo: GuestRepository = Depends(get_repo),
     current_user: User = Depends(require_receptionist)):
+
+    if payload.document_no:
+        existed_doc = await repo.get_by_document_no(payload.document_no)
+        if existed_doc:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail="Số giấy tờ đã tồn tại"
+            )
     if payload.phone:
         existed_phone = await repo.get_by_phone(payload.phone)
         if existed_phone:
@@ -69,7 +78,7 @@ async def create_guest(payload: GuestCreate, repo: GuestRepository = Depends(get
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT, detail="Email đã tồn tại"
             )
-    guest = await repo.create(payload.model_dump(exclude_unset=True))
+    guest = await repo.create(payload.model_dump(exclude_unset=True), current_user)
     return guest
 
 
@@ -79,6 +88,12 @@ async def update_guest(
     current_user: User = Depends(require_receptionist)
 ):
     data = payload.model_dump(exclude_unset=True)
+    if "document_no" in data:
+        existed = await repo.get_by_document_no(data["document_no"])
+        if existed and existed.id != guest_id:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail="Số giấy tờ đã tồn tại"
+            )
     if "phone" in data:
         existed = await repo.get_by_phone(data["phone"])
         if existed and existed.id != guest_id:
@@ -91,7 +106,7 @@ async def update_guest(
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT, detail="Email đã tồn tại"
             )
-    updated = await repo.update(guest_id, data)
+    updated = await repo.update(guest_id, data, current_user)
     if not updated:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy thông tin khách hàng"
@@ -113,3 +128,20 @@ async def delete_guest(guest_id: int, repo: GuestRepository = Depends(get_repo),
             status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy thông tin khách hàng"
         )
     return None
+
+@router.get("/enum/genders", response_model=List[GenderItem])
+async def get_genders(_: User = Depends(require_receptionist)):
+    return [
+        GenderItem(name=Gender.FEMALE.name, value="Nữ"),
+        GenderItem(name=Gender.MALE.name, value="Nam"),
+        GenderItem(name=Gender.OTHER.name, value="Khác"),
+    ]
+
+@router.get("/enum/document-types", response_model=List[DocumentTypeItem])
+async def get_document_types(_: User = Depends(require_receptionist)):
+    return [
+        DocumentTypeItem(name=DocumentType.PASSPORT.name, value="Hộ chiếu"),
+        DocumentTypeItem(name=DocumentType.ID_CARD.name, value="CMND/CCCD"),
+        DocumentTypeItem(name=DocumentType.DRIVER_LICENSE.name, value="Giấy phép lái xe"),
+        DocumentTypeItem(name=DocumentType.OTHER.name, value="Khác"),
+    ]

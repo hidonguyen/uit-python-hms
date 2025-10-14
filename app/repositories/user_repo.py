@@ -33,15 +33,3 @@ class UserRepository:
         from datetime import datetime
         user.last_login_at = datetime.now()
         await self.session.commit()
-    
-    async def count_users(self) -> int:
-        """Đếm tổng số người dùng."""
-        result = await self.session.execute(select(func.count(User.id)))
-        return result.scalar() or 0
-    
-    async def get_users_by_role(self, role: UserRole) -> list[User]:
-        """Lấy danh sách người dùng theo vai trò."""
-        result = await self.session.execute(
-            select(User).where(User.role == role)
-        )
-        return list(result.scalars().all())

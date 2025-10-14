@@ -15,7 +15,7 @@ async def get_summary(session: AsyncSession, start_date: date, end_date: date):
             FROM bookings b
             WHERE b.status = ANY(:allowed_booking_status)
               AND b.payment_status = ANY(:allowed_payment_status)
-              AND ((b.checkout AT TIME ZONE :tz)::date 
+              AND (b.checkout::date 
                     BETWEEN CAST(:start AS date) AND CAST(:end AS date))
         ),
         room_rev AS (
@@ -29,7 +29,7 @@ async def get_summary(session: AsyncSession, start_date: date, end_date: date):
             FROM booking_details d
             JOIN filtered_bookings fb ON fb.id = d.booking_id
             WHERE d.type = 'Service'
-              AND ((d.issued_at AT TIME ZONE :tz)::date 
+              AND (d.issued_at::date 
                     BETWEEN CAST(:start AS date) AND CAST(:end AS date))
         ),
         guests AS (
@@ -46,7 +46,6 @@ async def get_summary(session: AsyncSession, start_date: date, end_date: date):
     res = await session.execute(
         query,
         {
-            "tz": "Asia/Ho_Chi_Minh",
             "start": start_date,
             "end": end_date,
             "allowed_booking_status": [s.value for s in _ALLOWED_BOOKING_STATUS],
@@ -73,7 +72,7 @@ async def get_roomtype_revenue(session: AsyncSession, start_date: date, end_date
         JOIN room_types rt ON rt.id = b.room_type_id
         WHERE b.status = ANY(:allowed_booking_status)
           AND b.payment_status = ANY(:allowed_payment_status)
-          AND ((b.checkout AT TIME ZONE :tz)::date 
+          AND (b.checkout::date 
                 BETWEEN CAST(:start AS date) AND CAST(:end AS date))
           AND d.type = 'Room'
         GROUP BY rt.name
@@ -83,7 +82,6 @@ async def get_roomtype_revenue(session: AsyncSession, start_date: date, end_date
     res = await session.execute(
         query,
         {
-            "tz": "Asia/Ho_Chi_Minh",
             "start": start_date,
             "end": end_date,
             "allowed_booking_status": [s.value for s in _ALLOWED_BOOKING_STATUS],
@@ -103,7 +101,7 @@ async def get_service_revenue(session: AsyncSession, start_date: date, end_date:
         JOIN services s ON s.id = d.service_id
         WHERE b.status = ANY(:allowed_booking_status)
           AND b.payment_status = ANY(:allowed_payment_status)
-          AND ((d.issued_at AT TIME ZONE :tz)::date 
+          AND (d.issued_at::date 
                 BETWEEN CAST(:start AS date) AND CAST(:end AS date))
           AND d.type = 'Service'
         GROUP BY s.name
@@ -113,7 +111,6 @@ async def get_service_revenue(session: AsyncSession, start_date: date, end_date:
     res = await session.execute(
         query,
         {
-            "tz": "Asia/Ho_Chi_Minh",
             "start": start_date,
             "end": end_date,
             "allowed_booking_status": [s.value for s in _ALLOWED_BOOKING_STATUS],
@@ -134,7 +131,7 @@ async def get_payment_method_revenue(
         JOIN bookings b ON b.id = p.booking_id
         WHERE b.status = ANY(:allowed_booking_status)
           AND b.payment_status = ANY(:allowed_payment_status)
-          AND ((p.paid_at AT TIME ZONE :tz)::date 
+          AND (p.paid_at::date 
                 BETWEEN CAST(:start AS date) AND CAST(:end AS date))
         GROUP BY p.payment_method
         ORDER BY revenue DESC;
@@ -143,7 +140,6 @@ async def get_payment_method_revenue(
     res = await session.execute(
         query,
         {
-            "tz": "Asia/Ho_Chi_Minh",
             "start": start_date,
             "end": end_date,
             "allowed_booking_status": [s.value for s in _ALLOWED_BOOKING_STATUS],
@@ -160,12 +156,12 @@ async def get_bookings_per_day(session: AsyncSession, start_date: date, end_date
     query = text(
         """
         SELECT 
-            ((b.checkout AT TIME ZONE :tz)::date) AS day,
+            (b.checkout::date) AS day,
             COUNT(*) AS booking_count
         FROM bookings b
         WHERE b.status = ANY(:allowed_booking_status)
           AND b.payment_status = ANY(:allowed_payment_status)
-          AND ((b.checkout AT TIME ZONE :tz)::date 
+          AND (b.checkout::date 
                 BETWEEN CAST(:start AS date) AND CAST(:end AS date))
         GROUP BY day
         ORDER BY day ASC;
@@ -174,7 +170,6 @@ async def get_bookings_per_day(session: AsyncSession, start_date: date, end_date
     res = await session.execute(
         query,
         {
-            "tz": "Asia/Ho_Chi_Minh",
             "start": start_date,
             "end": end_date,
             "allowed_booking_status": [s.value for s in _ALLOWED_BOOKING_STATUS],
@@ -194,7 +189,7 @@ async def get_customer_distribution(
             SELECT 
                 b.id,
                 b.primary_guest_id AS guest_key,
-                ((b.checkout AT TIME ZONE :tz)::date) AS d
+                (b.checkout::date) AS d
             FROM bookings b
             WHERE b.status = ANY(:allowed_booking_status)
               AND b.payment_status = ANY(:allowed_payment_status)
@@ -220,7 +215,6 @@ async def get_customer_distribution(
     res = await session.execute(
         query,
         {
-            "tz": "Asia/Ho_Chi_Minh",
             "start": start_date,
             "end": end_date,
             "allowed_booking_status": [s.value for s in _ALLOWED_BOOKING_STATUS],

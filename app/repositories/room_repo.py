@@ -1,11 +1,14 @@
-from datetime import datetime
+from datetime import datetime, timedelta
+from decimal import Decimal
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import or_, select, func, and_
 from sqlalchemy.orm import selectinload
 from typing import Optional, List, Dict, Any
 
 from app.models.booking import Booking, BookingStatus
+from app.models.room_type import RoomType
 from app.models.user import User
+from app.schemas.room import AvailableRoomOut
 from ..models.room import HousekeepingStatus, Room, RoomStatus
 
 class RoomRepository:
@@ -129,43 +132,118 @@ class RoomRepository:
 
     async def get_available_rooms(
         self,
-        date: Optional[datetime] = None,
-        time: Optional[datetime] = None,
+        from_date: Optional[datetime] = None,
+        to_date: Optional[datetime] = None,
         room_id: Optional[int] = None,
-        room_type_id: Optional[int] = None
-    ) -> List[Room]:
+        room_type_id: Optional[int] = None, 
+        occupancy: Optional[int] = None,
+        min_base_rate: Optional[Decimal] = None,
+        max_base_rate: Optional[Decimal] = None,
+    ) -> List[AvailableRoomOut]:
         """Lấy danh sách phòng có sẵn."""
 
-        if not date:
-            date = datetime.today()
+        if not from_date:
+            from_date = datetime.today()
+            from_date = from_date.replace(hour=14, minute=0, second=0, microsecond=0) # Giờ nhận phòng mặc định 14:00
 
-        if time:
-            date = date.replace(hour=time.hour, minute=time.minute, second=time.second, microsecond=0)
-        else:
-            date = date.replace(hour=14, minute=0, second=0, microsecond=0)
+        # Nếu from_date không có thông tin giờ, đặt giờ nhận phòng mặc định
+        if from_date.hour == 0 and from_date.minute == 0 and from_date.second == 0 and from_date.microsecond == 0:
+            from_date = from_date.replace(hour=14, minute=0, second=0, microsecond=0) # Giờ nhận phòng mặc định 14:00
+
+        if not to_date:
+            to_date = from_date + timedelta(days=1)
+            to_date = to_date.replace(hour=12, minute=0, second=0, microsecond=0) # Giờ trả phòng mặc định 12:00
+        
+        # Nếu to_date không có thông tin giờ, đặt giờ trả phòng mặc định
+        if to_date.hour == 0 and to_date.minute == 0 and to_date.second == 0 and to_date.microsecond == 0:
+            to_date = to_date.replace(hour=12, minute=0, second=0, microsecond=0) # Giờ trả phòng mặc định 12:00
 
         # kiểm tra danh sách phòng có sẵn tại thời điểm cụ thể
-        subquery = (
+        rooms = (
             select(Booking.room_id)
             .where(
                 and_(
                     or_(Booking.status == BookingStatus.RESERVED, Booking.status == BookingStatus.CHECKED_IN),
-                    Booking.checkin <= date,
-                    or_(not Booking.checkout, Booking.checkout > date)
+                    or_(
+                        and_(
+                            Booking.checkout.is_(None),
+                            Booking.checkin <= to_date,
+                        ),
+                        and_(
+                            Booking.checkout.is_not(None),
+                            Booking.checkin <= to_date,
+                            Booking.checkout > from_date,
+                        )
+                    )
                 )
             )
             .subquery()
         )
-        query = select(Room).where(
-            and_(
-                Room.status == RoomStatus.AVAILABLE,
-                Room.housekeeping_status == HousekeepingStatus.CLEAN,
-                ~Room.id.in_(select(subquery.c.room_id))
+
+        # Lọc theo điều kiện của loại phòng
+        rt_conditions = []
+        if occupancy is not None:
+            rt_conditions.append(RoomType.max_occupancy >= occupancy)
+        if min_base_rate is not None:
+            rt_conditions.append(RoomType.base_rate >= min_base_rate)
+        if max_base_rate is not None:
+            rt_conditions.append(RoomType.base_rate <= max_base_rate)
+
+        query = (
+            select(
+                Room.id,
+                Room.name,
+                Room.room_type_id,
+                RoomType.name.label("room_type"),
+                RoomType.base_occupancy,
+                RoomType.max_occupancy,
+                RoomType.base_rate,
+                RoomType.hour_rate,
+                RoomType.extra_adult_fee,
+                RoomType.extra_child_fee,
+                Room.description,
+                Room.status,
+                Room.housekeeping_status,
+                Room.created_at,
+                Room.updated_at,
+            )
+            .select_from(Room)
+            .join(RoomType, Room.room_type_id == RoomType.id)
+            .where(
+                and_(
+                    Room.status == RoomStatus.AVAILABLE,
+                    Room.housekeeping_status == HousekeepingStatus.CLEAN,
+                    ~Room.id.in_(select(rooms.c.room_id)),
+                    *rt_conditions
+                )
             )
         )
         if room_id:
-            query = query.where(Room.id == room_id)
+            query = query.where(and_(Room.id == room_id))
         if room_type_id:
-            query = query.where(Room.room_type_id == room_type_id)
-        result = await self.session.execute(query)
-        return list(result.scalars().all())
+            query = query.where(and_(Room.room_type_id == room_type_id))
+
+        result = await self.session.execute(query)        
+        rows = result.all()
+
+        rooms: List[AvailableRoomOut] = []
+        for row in rows:
+            rooms.append(AvailableRoomOut(
+                id=row.id,
+                name=row.name,
+                room_type_id=row.room_type_id,
+                room_type=row.room_type,
+                base_occupancy=row.base_occupancy,
+                max_occupancy=row.max_occupancy,
+                base_rate=row.base_rate,
+                hour_rate=row.hour_rate,
+                extra_adult_fee=row.extra_adult_fee,
+                extra_child_fee=row.extra_child_fee,
+                description=row.description,
+                status=row.status,
+                housekeeping_status=row.housekeeping_status,
+                created_at=row.created_at,
+                updated_at=row.updated_at,
+            ))
+
+        return rooms

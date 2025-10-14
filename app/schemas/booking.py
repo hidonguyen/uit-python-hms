@@ -105,29 +105,14 @@ class BookingOut(BookingBase):
 
     model_config = {"from_attributes": True}
 
+class ChargeTypeItem(BaseModel):
+    value: str
+    text: str
 
-class BookingStatusUpdate(BaseModel):
-    status: BookingStatus
+class BookingStatusItem(BaseModel):
+    value: str
+    text: str
 
-
-class PaymentStatusUpdate(BaseModel):
-    payment_status: PaymentStatus
-
-
-class CheckInUpdate(BaseModel):
-    checkin_time: datetime
-
-
-class CheckOutUpdate(BaseModel):
-    checkout_time: datetime
-
-
-class BookingDetailIn(BaseModel):
-    service_id: int
-    quantity: int = Field(default=1, ge=1)
-    unit_price: Optional[Decimal] = Field(default=None, ge=0)
-    notes: Optional[str] = None
-
-
-class BookingCreateWithDetails(BookingCreate):
-    booking_details: List[BookingDetailIn] = []
+class PaymentStatusItem(BaseModel):
+    value: str
+    text: str

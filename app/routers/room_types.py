@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional, List
+from typing import Optional
 from decimal import Decimal
 
 from app.services.auth_service import require_manager, require_receptionist
@@ -8,6 +8,7 @@ from app.services.auth_service import require_manager, require_receptionist
 from ..db import get_session
 from ..models.user import User
 from ..schemas.room_type import (
+    PagedRoomTypeOut,
     RoomTypeCreate,
     RoomTypeUpdate,
     RoomTypeOut,
@@ -17,7 +18,7 @@ from ..repositories.room_type_repo import RoomTypeRepository
 router = APIRouter()
 
 
-@router.get("", response_model=List[RoomTypeOut])
+@router.get("", response_model=PagedRoomTypeOut)
 async def list_room_types(
     skip: int = Query(0, ge=0, description="Số bản ghi bỏ qua"),
     limit: int = Query(100, ge=1, le=1000, description="Số bản ghi tối đa"),
@@ -45,9 +46,10 @@ async def list_room_types(
         filters["min_base_rate"] = min_base_rate
     if max_base_rate is not None:
         filters["max_base_rate"] = max_base_rate
-    
+
+    count = await room_type_repo.count(filters)
     room_types = await room_type_repo.list(skip=skip, limit=limit, filters=filters)
-    return room_types
+    return PagedRoomTypeOut(total=count, skip=skip, limit=limit, items=room_types)
 
 @router.get("/{room_type_id}", response_model=RoomTypeOut)
 async def get_room_type(
@@ -90,11 +92,7 @@ async def create_room_type(
             detail="Sức chứa tối đa phải lớn hơn hoặc bằng sức chứa cơ bản",
         )
 
-    # Tạo loại phòng mới
-    room_type_dict = room_type_data.model_dump(exclude_unset=True)
-    room_type_dict["created_by"] = current_user.id
-
-    room_type = await room_type_repo.create(room_type_dict)
+    room_type = await room_type_repo.create(room_type_data.model_dump(exclude_unset=True), current_user)
     return room_type
 
 
@@ -130,10 +128,7 @@ async def update_room_type(
             detail="Sức chứa tối đa phải lớn hơn hoặc bằng sức chứa cơ bản",
         )
 
-    update_data = room_type_data.model_dump(exclude_unset=True)
-    update_data["updated_by"] = current_user.id
-
-    updated_room_type = await room_type_repo.update(room_type_id, update_data)
+    updated_room_type = await room_type_repo.update(room_type_id, room_type_data.model_dump(exclude_unset=True), current_user)
     return updated_room_type
 
 

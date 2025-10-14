@@ -24,3 +24,7 @@ class BookingDetailOut(BookingDetailBase):
     updated_at: Optional[datetime] = None
     
     model_config = {"from_attributes": True}
+
+class BookingDetailTypeItem(BaseModel):
+    value: str
+    text: str
