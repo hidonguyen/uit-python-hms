@@ -34,14 +34,13 @@ MAX_RANGE_DAYS = 370
 def parse_flexible_date(value: str) -> date:
     if isinstance(value, date):
         return value
-    for fmt in ("%Y-%m-%d", "%d-%m-%Y"):
-        try:
-            return datetime.strptime(value, fmt).date()
-        except ValueError:
-            continue
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").date()
+    except ValueError:
+        pass
     raise HTTPException(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        detail=f"Invalid date format for '{value}'. Use YYYY-MM-DD or DD-MM-YYYY.",
+        detail=f"Invalid date format for '{value}'. Use YYYY-MM-DD.",
     )
 
 
@@ -49,7 +48,7 @@ def _validate_range(start_date: date, end_date: date):
     if start_date is None or end_date is None:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="start_date và end_date là bắt buộc (DD-MM-YYYY).",
+            detail="start_date và end_date là bắt buộc (YYYY-MM-DD).",
         )
     if start_date > end_date:
         raise HTTPException(
@@ -65,8 +64,8 @@ def _validate_range(start_date: date, end_date: date):
 
 @router.get("/summary", response_model=SummaryOut)
 async def summary(
-    start_date: Annotated[str, Query(..., description="DD-MM-YYYY")],
-    end_date: Annotated[str, Query(..., description="DD-MM-YYYY")],
+    start_date: Annotated[str, Query(..., description="YYYY-MM-DD")],
+    end_date: Annotated[str, Query(..., description="YYYY-MM-DD")],
     session: AsyncSession = Depends(get_session),
     _: User = Depends(require_manager),
 ):
@@ -77,13 +76,15 @@ async def summary(
     raw = await get_summary(session, s, e)
     room = Decimal(str(raw.get("room_amount", 0.0)))
     svc = Decimal(str(raw.get("svc_amount", 0.0)))
+    other = Decimal(str(raw.get("other_amount", 0.0)))
     guests = int(raw.get("guest_count", 0))
-    total = room + svc
+    total = room + svc + other
 
     return SummaryOut(
         total_revenue=total,
         room_revenue=room,
         service_revenue=svc,
+        other_revenue=other,
         total_guests=guests,
         currency="VND",
     )
@@ -91,8 +92,8 @@ async def summary(
 
 @router.get("/revenue-by-room-type", response_model=RoomTypeRevenueOut)
 async def revenue_by_room_type(
-    start_date: Annotated[str, Query(..., description="DD-MM-YYYY")],
-    end_date: Annotated[str, Query(..., description="DD-MM-YYYY")],
+    start_date: Annotated[str, Query(..., description="YYYY-MM-DD")],
+    end_date: Annotated[str, Query(..., description="YYYY-MM-DD")],
     session: AsyncSession = Depends(get_session),
     _: User = Depends(require_manager),
 ):
@@ -120,8 +121,8 @@ async def revenue_by_room_type(
 
 @router.get("/service-revenue", response_model=ServiceRevenueOut)
 async def service_revenue(
-    start_date: Annotated[str, Query(..., description="DD-MM-YYYY")],
-    end_date: Annotated[str, Query(..., description="DD-MM-YYYY")],
+    start_date: Annotated[str, Query(..., description="YYYY-MM-DD")],
+    end_date: Annotated[str, Query(..., description="YYYY-MM-DD")],
     session: AsyncSession = Depends(get_session),
     _: User = Depends(require_manager),
 ):
@@ -149,8 +150,8 @@ async def service_revenue(
 
 @router.get("/customer-distribution", response_model=CustomerDistributionOut)
 async def customer_distribution(
-    start_date: Annotated[str, Query(..., description="DD-MM-YYYY")],
-    end_date: Annotated[str, Query(..., description="DD-MM-YYYY")],
+    start_date: Annotated[str, Query(..., description="YYYY-MM-DD")],
+    end_date: Annotated[str, Query(..., description="YYYY-MM-DD")],
     session: AsyncSession = Depends(get_session),
     _: User = Depends(require_manager),
 ):
@@ -169,8 +170,8 @@ async def customer_distribution(
 
 @router.get("/bookings-per-day", response_model=DailyBookingsOut)
 async def bookings_per_day(
-    start_date: Annotated[str, Query(..., description="DD-MM-YYYY")],
-    end_date: Annotated[str, Query(..., description="DD-MM-YYYY")],
+    start_date: Annotated[str, Query(..., description="YYYY-MM-DD")],
+    end_date: Annotated[str, Query(..., description="YYYY-MM-DD")],
     session: AsyncSession = Depends(get_session),
     _: User = Depends(require_manager),
 ):

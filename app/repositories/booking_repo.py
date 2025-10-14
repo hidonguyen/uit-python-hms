@@ -448,7 +448,7 @@ class BookingRepository:
         await self.session.commit()
         await self.session.refresh(booking)
 
-        return booking
+        return await self.get(booking.id)
 
     async def update(self, booking_id: int, booking_data: Dict[str, Any], current_user: User) -> Optional[Booking]:
         """Cập nhật booking."""
@@ -465,7 +465,8 @@ class BookingRepository:
 
         await self.session.commit()
         await self.session.refresh(booking)
-        return booking
+        
+        return await self.get(booking_id)
 
     async def checkin(self, booking_id: int, current_user: User) -> Optional[Booking]:
         booking = await self.session.get(Booking, booking_id)
@@ -491,7 +492,8 @@ class BookingRepository:
         await self.session.commit()
         await self.session.refresh(booking)
         await self.session.refresh(room)
-        return booking
+
+        return await self.get(booking_id)
 
     async def checkout(self, booking_id: int, current_user: User) -> Optional[Booking]:
         booking = await self.session.get(Booking, booking_id)
@@ -559,7 +561,7 @@ class BookingRepository:
             await self.session.rollback()
             raise e
         
-        return self.get(booking_id)
+        return await self.get(booking_id)
     
     async def delete(self, booking_id: int) -> bool:
         """Xóa booking (kiểm tra ràng buộc toàn vẹn)."""

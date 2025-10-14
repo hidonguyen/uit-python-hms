@@ -1,6 +1,8 @@
 from datetime import date
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
+
+from app.models.booking_detail import BookingDetailType
 from ..models.booking import BookingStatus, PaymentStatus
 
 _ALLOWED_BOOKING_STATUS = (BookingStatus.CHECKED_OUT,)
@@ -13,8 +15,8 @@ async def get_summary(session: AsyncSession, start_date: date, end_date: date):
         WITH filtered_bookings AS (
             SELECT b.id, b.primary_guest_id AS guest_key
             FROM bookings b
-            WHERE b.status = ANY(:allowed_booking_status)
-              AND b.payment_status = ANY(:allowed_payment_status)
+            WHERE b.status = 'CHECKED_OUT'
+              AND b.payment_status = 'PAID'
               AND (b.checkout::date 
                     BETWEEN CAST(:start AS date) AND CAST(:end AS date))
         ),
@@ -22,13 +24,21 @@ async def get_summary(session: AsyncSession, start_date: date, end_date: date):
             SELECT COALESCE(SUM(d.amount), 0) AS amount
             FROM booking_details d
             JOIN filtered_bookings fb ON fb.id = d.booking_id
-            WHERE d.type = 'Room'
+            WHERE d.type = 'ROOM'
         ),
         svc_rev AS (
             SELECT COALESCE(SUM(d.amount), 0) AS amount
             FROM booking_details d
             JOIN filtered_bookings fb ON fb.id = d.booking_id
-            WHERE d.type = 'Service'
+            WHERE d.type = 'SERVICE'
+              AND (d.issued_at::date 
+                    BETWEEN CAST(:start AS date) AND CAST(:end AS date))
+        ),
+        other_rev AS (
+            SELECT COALESCE(SUM(d.amount), 0) AS amount
+            FROM booking_details d
+            JOIN filtered_bookings fb ON fb.id = d.booking_id
+            WHERE d.type != 'ROOM' AND d.type != 'SERVICE'
               AND (d.issued_at::date 
                     BETWEEN CAST(:start AS date) AND CAST(:end AS date))
         ),
@@ -40,6 +50,7 @@ async def get_summary(session: AsyncSession, start_date: date, end_date: date):
         SELECT
             (SELECT amount FROM room_rev)  AS room_amount,
             (SELECT amount FROM svc_rev)   AS svc_amount,
+            (SELECT amount FROM other_rev) AS other_amount,
             (SELECT c FROM guests)         AS guest_count;
     """
     )
@@ -48,18 +59,18 @@ async def get_summary(session: AsyncSession, start_date: date, end_date: date):
         {
             "start": start_date,
             "end": end_date,
-            "allowed_booking_status": [s.value for s in _ALLOWED_BOOKING_STATUS],
-            "allowed_payment_status": [s.value for s in _ALLOWED_PAYMENT_STATUS],
         },
     )
     row = res.fetchone()
     room_amount = float(row.room_amount or 0)
     svc_amount = float(row.svc_amount or 0)
+    other_amount = float(row.other_amount or 0)
     return {
         "room_amount": room_amount,
         "svc_amount": svc_amount,
+        "other_amount": other_amount,
         "guest_count": int(row.guest_count or 0),
-        "total_revenue": room_amount + svc_amount,
+        "total_revenue": room_amount + svc_amount + other_amount,
     }
 
 
@@ -70,11 +81,11 @@ async def get_roomtype_revenue(session: AsyncSession, start_date: date, end_date
         FROM booking_details d
         JOIN bookings b ON b.id = d.booking_id
         JOIN room_types rt ON rt.id = b.room_type_id
-        WHERE b.status = ANY(:allowed_booking_status)
-          AND b.payment_status = ANY(:allowed_payment_status)
+        WHERE b.status = 'CHECKED_OUT'
+          AND b.payment_status = 'PAID'
           AND (b.checkout::date 
                 BETWEEN CAST(:start AS date) AND CAST(:end AS date))
-          AND d.type = 'Room'
+          AND d.type = 'ROOM'
         GROUP BY rt.name
         ORDER BY revenue DESC;
     """
@@ -84,8 +95,6 @@ async def get_roomtype_revenue(session: AsyncSession, start_date: date, end_date
         {
             "start": start_date,
             "end": end_date,
-            "allowed_booking_status": [s.value for s in _ALLOWED_BOOKING_STATUS],
-            "allowed_payment_status": [s.value for s in _ALLOWED_PAYMENT_STATUS],
         },
     )
     rows = res.fetchall()
@@ -99,11 +108,11 @@ async def get_service_revenue(session: AsyncSession, start_date: date, end_date:
         FROM booking_details d
         JOIN bookings b ON b.id = d.booking_id
         JOIN services s ON s.id = d.service_id
-        WHERE b.status = ANY(:allowed_booking_status)
-          AND b.payment_status = ANY(:allowed_payment_status)
+        WHERE b.status = 'CHECKED_OUT'
+          AND b.payment_status = 'PAID'
           AND (d.issued_at::date 
                 BETWEEN CAST(:start AS date) AND CAST(:end AS date))
-          AND d.type = 'Service'
+          AND d.type = 'SERVICE'
         GROUP BY s.name
         ORDER BY revenue DESC;
     """
@@ -113,8 +122,6 @@ async def get_service_revenue(session: AsyncSession, start_date: date, end_date:
         {
             "start": start_date,
             "end": end_date,
-            "allowed_booking_status": [s.value for s in _ALLOWED_BOOKING_STATUS],
-            "allowed_payment_status": [s.value for s in _ALLOWED_PAYMENT_STATUS],
         },
     )
     rows = res.fetchall()
@@ -129,8 +136,8 @@ async def get_payment_method_revenue(
         SELECT p.payment_method, COALESCE(SUM(p.amount), 0) AS revenue
         FROM payments p
         JOIN bookings b ON b.id = p.booking_id
-        WHERE b.status = ANY(:allowed_booking_status)
-          AND b.payment_status = ANY(:allowed_payment_status)
+        WHERE b.status = 'CHECKED_OUT'
+          AND b.payment_status = 'PAID'
           AND (p.paid_at::date 
                 BETWEEN CAST(:start AS date) AND CAST(:end AS date))
         GROUP BY p.payment_method
@@ -142,8 +149,6 @@ async def get_payment_method_revenue(
         {
             "start": start_date,
             "end": end_date,
-            "allowed_booking_status": [s.value for s in _ALLOWED_BOOKING_STATUS],
-            "allowed_payment_status": [s.value for s in _ALLOWED_PAYMENT_STATUS],
         },
     )
     rows = res.fetchall()
@@ -159,8 +164,8 @@ async def get_bookings_per_day(session: AsyncSession, start_date: date, end_date
             (b.checkout::date) AS day,
             COUNT(*) AS booking_count
         FROM bookings b
-        WHERE b.status = ANY(:allowed_booking_status)
-          AND b.payment_status = ANY(:allowed_payment_status)
+        WHERE b.status = 'CHECKED_OUT'
+          AND b.payment_status = 'PAID'
           AND (b.checkout::date 
                 BETWEEN CAST(:start AS date) AND CAST(:end AS date))
         GROUP BY day
@@ -172,8 +177,6 @@ async def get_bookings_per_day(session: AsyncSession, start_date: date, end_date
         {
             "start": start_date,
             "end": end_date,
-            "allowed_booking_status": [s.value for s in _ALLOWED_BOOKING_STATUS],
-            "allowed_payment_status": [s.value for s in _ALLOWED_PAYMENT_STATUS],
         },
     )
     rows = res.fetchall()
@@ -191,8 +194,8 @@ async def get_customer_distribution(
                 b.primary_guest_id AS guest_key,
                 (b.checkout::date) AS d
             FROM bookings b
-            WHERE b.status = ANY(:allowed_booking_status)
-              AND b.payment_status = ANY(:allowed_payment_status)
+            WHERE b.status = 'CHECKED_OUT'
+              AND b.payment_status = 'PAID'
               AND b.primary_guest_id IS NOT NULL
         ),
         guest_first AS (
@@ -217,8 +220,6 @@ async def get_customer_distribution(
         {
             "start": start_date,
             "end": end_date,
-            "allowed_booking_status": [s.value for s in _ALLOWED_BOOKING_STATUS],
-            "allowed_payment_status": [s.value for s in _ALLOWED_PAYMENT_STATUS],
         },
     )
     row = res.fetchone()

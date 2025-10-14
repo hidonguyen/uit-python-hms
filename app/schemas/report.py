@@ -8,10 +8,11 @@ class SummaryOut(BaseModel):
     total_revenue: Decimal
     room_revenue: Decimal
     service_revenue: Decimal
+    other_revenue: Decimal
     total_guests: int
     currency: str = "VND"
 
-    @field_serializer("total_revenue", "room_revenue", "service_revenue")
+    @field_serializer("total_revenue", "room_revenue", "service_revenue", "other_revenue")
     def _ser_decimal(self, v: Decimal, _info):
         return float(v)
 

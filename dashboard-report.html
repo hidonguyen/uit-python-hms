@@ -274,7 +274,8 @@
 
     <script>
       /* ================== CONFIG ================== */
-      const API_BASE = "http://127.0.0.1:8000";
+      const API_BASE = "http://localhost:8000";
+      const API_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJyZWNlcHRpb25pc3QiLCJyb2xlIjoiUmVjZXB0aW9uaXN0IiwiZXhwIjoxNzYwNDY3NjExfQ.gbkGq3uwmwa4pkff2bKfDTojsfKksMAwok9ihXG7CiU";
       const EP = {
         summary: "/api/reports/summary",
         roomType: "/api/reports/revenue-by-room-type",
@@ -297,7 +298,6 @@
       const pad = (n) => String(n).padStart(2, "0");
       const ymd = (d) =>
         `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-      const ymdToDMY = (v) => (v ? v.split("-").reverse().join("-") : "");
       const fmtVND = (n) => (n ?? 0).toLocaleString("vi-VN") + " ₫";
       const fmtNum = (n) => (n ?? 0).toLocaleString("vi-VN");
       const fmtPct = (p) => `${(p ?? 0).toFixed(1)}%`;
@@ -537,7 +537,7 @@
       const get = async (path, params, signal) => {
         const url = `${API_BASE}${path}?${new URLSearchParams(params)}`;
         log("GET " + url);
-        const res = await fetch(url, { signal });
+        const res = await fetch(url, { signal, headers: { Accept: "application/json", Authorization: `Bearer ${API_TOKEN}` } });
         if (!res.ok) throw new Error(res.status + " " + res.statusText);
         return res.json();
       };
@@ -551,8 +551,8 @@
         $("#reloadBtn").disabled = true;
 
         const q = {
-          start_date: ymdToDMY($("#startDate").value),
-          end_date: ymdToDMY($("#endDate").value),
+          start_date: $("#startDate").value,
+          end_date: $("#endDate").value,
         };
         $("#rangeLabel").textContent = `${q.start_date} → ${q.end_date}`;
 
